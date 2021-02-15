@@ -14,8 +14,8 @@
 
 ### Inladen van leerlingenlijst
 De leerlingenlijst moet aan volgende voorwaarden voldoen:
-    1. is een .csv-bestand
-    1. bevat van elke leerling in ieder geval:
+    * is een .csv-bestand
+    * bevat van elke leerling in ieder geval:
         * leerlingnummer
         * voornaam, tussenvoegsel, achternaam
         * leerjaar (H5 of V6)
