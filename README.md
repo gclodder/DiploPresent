@@ -35,5 +35,6 @@ De leerlingenlijst moet aan volgende voorwaarden voldoen:
 #### Herzien van gesorteerde leerlinglijst
 De gesorteerde leerlingenlijst kan nog aanpassingen ontvangen. Dit gebeurt in hetzelfde scherm als het inladen.
 1. Klik rechts op *importeren* en selecteer de opgeslagen .bin-file.
-1. De lijst is ingeladen en kan gewijzigd worden. Sla de lijst opnieuw op als .bin-bestand of overschrijf het oude.
+1. De lijst is ingeladen en kan gewijzigd worden. 
+1. Sla de lijst opnieuw op als .bin-bestand of overschrijf het oude.
 
