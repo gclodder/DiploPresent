@@ -14,12 +14,12 @@
 
 ### Inladen van leerlingenlijst
 De leerlingenlijst moet aan volgende voorwaarden voldoen:
-    * is een .csv-bestand
-    * bevat van elke leerling in ieder geval:
-        * leerlingnummer
-        * voornaam, tussenvoegsel, achternaam
-        * leerjaar (H5 of V6)
-        * mentor
+* is een .csv-bestand
+* bevat van elke leerling in ieder geval:
+    * leerlingnummer
+    * voornaam, tussenvoegsel, achternaam
+    * leerjaar (H5 of V6)
+    * mentor
   
 1. Selecteer in het beginscherm *Importeren & Sorteren*
 1. Selecteer de knop importeren onderin het scherm en kies het juiste CSV-bestand.
