@@ -14,12 +14,12 @@
 
 ### Inladen van leerlingenlijst
 De leerlingenlijst moet aan volgende voorwaarden voldoen:
-1. is een .csv-bestand
-1. bevat van elke leerling in ieder geval:
-    * leerlingnummer
-    * voornaam, tussenvoegsel, achternaam
-    * leerjaar (H5 of V6)
-    * mentor
+    1. is een .csv-bestand
+    1. bevat van elke leerling in ieder geval:
+        * leerlingnummer
+        * voornaam, tussenvoegsel, achternaam
+        * leerjaar (H5 of V6)
+        * mentor
   
 1. Selecteer in het beginscherm *Importeren & Sorteren*
 1. Selecteer de knop importeren onderin het scherm en kies het juiste CSV-bestand.
@@ -30,3 +30,10 @@ De leerlingenlijst moet aan volgende voorwaarden voldoen:
     * Selecteer met ctrl en/of shift om meerdere leerlingen te kiezen en klik op de pijl naar rechts
     * Kies voor Selecteer alles en klik op de pijl naar rechts
 1. In de sorteerlijst is het nog mogelijk plekken te wisselen en leerlingen uit de lijst te halen
+1. Sla de sortering op als .bin-file voor later gebruik
+
+#### Herzien van gesorteerde leerlinglijst
+De gesorteerde leerlingenlijst kan nog aanpassingen ontvangen. Dit gebeurt in hetzelfde scherm als het inladen.
+1. Klik rechts op *importeren* en selecteer de opgeslagen .bin-file.
+1. De lijst is ingeladen en kan gewijzigd worden. Sla de lijst opnieuw op als .bin-bestand of overschrijf het oude.
+
