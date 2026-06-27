@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #030c20;
+  --color-navy: #204568;
+  --color-gold: #d6bf92;
+  --color-gold-dark: #bfab82;
+  --font-sans: "mundial", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    min-height: 100%;
+    background: #030c20;
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    color: white;
+    background: linear-gradient(90deg, #030c20 0%, #204568 50%, #030c20 100%);
+  }
+
+  button,
+  a,
+  input,
+  select {
+    outline-color: #d6bf92;
+  }
+
+  code {
+    color: var(--color-navy);
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply min-h-screen px-4 py-8 sm:px-8;
+  }
+
+  .content-width {
+    @apply mx-auto w-full max-w-7xl;
+  }
+
+  .panel {
+    @apply rounded-2xl bg-white p-5 text-ink shadow-xl;
+  }
+
+  .button-primary {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gold-dark bg-gold px-4 py-2 font-semibold text-ink shadow-sm transition hover:bg-gold-dark disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .button-secondary {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gold px-4 py-2 font-semibold text-gold transition hover:bg-gold hover:text-ink;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-ink shadow-sm focus:border-gold focus:ring-2 focus:ring-gold/40;
+  }
+
+  .muted {
+    @apply text-sm text-slate-500;
+  }
+
+  .cum-laude-badge::after {
+    content: "";
+    position: absolute;
+    inset: -35% -60%;
+    transform: translateX(-120%) rotate(20deg);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.15) 35%,
+      rgba(255, 255, 255, 0.75) 50%,
+      rgba(255, 255, 255, 0.15) 65%,
+      transparent 100%
+    );
+    animation: cum-laude-shine 2.8s ease-in-out 0.35s infinite;
+  }
+
+  .live-jump-list {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(214, 191, 146, 0.45) transparent;
+  }
+
+  .live-jump-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .live-jump-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .live-jump-list::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(214, 191, 146, 0.45);
+  }
+
+  .live-jump-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(214, 191, 146, 0.75);
+  }
+}
+
+@keyframes cum-laude-shine {
+  0% {
+    transform: translateX(-120%) rotate(20deg);
+  }
+
+  45%,
+  100% {
+    transform: translateX(120%) rotate(20deg);
+  }
+}

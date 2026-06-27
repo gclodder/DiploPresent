@@ -1,40 +1,45 @@
-# DiploPresent
-## Dit programma heeft drie functies
-1. Het inladen van een csv-lijst met leerlingnummers en namen
-1. Het handmatig sorteren in een specifieke volgorde van de leerlingen en dat opslaan als .bin voor later
-1. Het full screen presenteren van de leerlingen op de volgorde in de .bin met leerlingfoto's uit twee mappen: oude foto's en nieuwe foto's.
+# DiploPresent 3
 
-## Openstaande wensen
-* Het opslaan van config in een lokaal settingsbestand
-* Het opslaan van de wijzigingen in studentenlijst en fotomappen in een dedicated diplopresent-bestand als project-file
-* Het direct starten van een presentatie door het project als een presentatiebestand op te slaan
-* Editen van leerlingnaam in de sorteerweergave
+Vue 3 + Vite + Tailwind frontend met een PHP JSON-API. Node.js is alleen nodig voor ontwikkeling en de productiebuild; de host serveert daarna statische bestanden en PHP.
 
-## Handleiding
+## Lokaal ontwikkelen
 
-### Inladen van leerlingenlijst
-De leerlingenlijst moet aan volgende voorwaarden voldoen:
-* is een .csv-bestand
-* bevat van elke leerling in ieder geval:
-    * leerlingnummer
-    * voornaam, tussenvoegsel, achternaam
-    * leerjaar (H5 of V6)
-    * mentor
-  
-1. Selecteer in het beginscherm *Importeren & Sorteren*
-1. Selecteer de knop importeren onderin het scherm en kies het juiste CSV-bestand.
-1. Selecteer de leerlingen die in de sorteerlijst terecht moeten komen. Daar zijn verschillende manieren voor.
-    * Dubbelklik op de naam van de leerling, deze verschijnt direct op de sorteerlijst op volgorde van aanklikken
-    * Selecteer een leerling en klik op de pijl naar rechts
-    * Sleep over de lijst om meerdere leerlingen te selecteren en klik op de pijl naar rechts
-    * Selecteer met ctrl en/of shift om meerdere leerlingen te kiezen en klik op de pijl naar rechts
-    * Kies voor Selecteer alles en klik op de pijl naar rechts
-1. In de sorteerlijst is het nog mogelijk plekken te wisselen en leerlingen uit de lijst te halen
-1. Sla de sortering op als .bin-file voor later gebruik
+```powershell
+npm install
+npm run dev
+```
 
-#### Herzien van gesorteerde leerlinglijst
-De gesorteerde leerlingenlijst kan nog aanpassingen ontvangen. Dit gebeurt in hetzelfde scherm als het inladen.
-1. Klik rechts op *importeren* en selecteer de opgeslagen .bin-file.
-1. De lijst is ingeladen en kan gewijzigd worden. 
-1. Sla de lijst opnieuw op als .bin-bestand of overschrijf het oude.
+`npm run dev` start zowel de PHP API op `127.0.0.1:8080` als Vite. Voor afzonderlijk starten:
 
+```powershell
+npm run dev:api
+npm run dev:frontend
+```
+
+Wil je de devserver vanaf een andere laptop/telefoon in hetzelfde netwerk openen, gebruik dan:
+
+```powershell
+npm run dev:host
+```
+
+Open daarna `http://<ip-adres-van-deze-computer>:5173/`. De PHP API blijft lokaal op `127.0.0.1:8080`; Vite proxyt `/api` en `/storage` door.
+
+## Productiebuild
+
+```powershell
+npm run build
+```
+
+Kopieer daarna de inhoud van `dist/` naar de webmap `/diplo/` en plaats `api/`, `storage/` en `.htaccess` ernaast. De map `images/` zit al in de build.
+
+De mappen `storage/imports`, `storage/lists`, `storage/photos` en `storage/sessions` moeten voor PHP leesbaar zijn. `storage/imports`, `storage/lists` en `storage/sessions` moeten ook schrijfbaar zijn.
+
+De root-`.htaccess` beschermt de volledige app met HTTP Basic Authentication. Pas vóór deployment het absolute pad bij `AuthUserFile` aan wanneer de hostinglocatie afwijkt.
+
+## Data
+
+- De editor begint altijd met een CSV-export uit het schoolsysteem.
+- CSV gebruikt een puntkomma als scheidingsteken en een headerregel.
+- Nieuwe presentatielijsten gebruiken benoemde leerlingvelden onder `students`.
+- Lijsten worden per mentor, combinatie van mentoren of stamgroep samengesteld en blijven ongepagineerd, zodat de volledige volgorde met drag-and-drop kan worden bepaald.
+- Een gedeelde presentatie gebruikt een tijdelijk sessiebestand in `storage/sessions`; het dashboard bestuurt het beamerbeeld via polling.
