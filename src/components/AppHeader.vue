@@ -23,7 +23,7 @@ const logout = inject('logout', null)
     <nav v-if="compact" class="flex gap-3">
       <RouterLink class="button-secondary" to="/editor">Editor</RouterLink>
       <RouterLink class="button-secondary" to="/presenter">Presenter</RouterLink>
-      <RouterLink class="button-secondary" to="/admin">Admin</RouterLink>
+      <RouterLink class="button-secondary" to="/beheer">Beheer</RouterLink>
       <button v-if="logout" class="button-secondary" type="button" @click="logout">Uitloggen</button>
     </nav>
   </header>

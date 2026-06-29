@@ -15,6 +15,7 @@ const files = ref([])
 const selectedFile = ref('')
 const loading = ref(false)
 const config = ref({ photoBaseUrl: 'storage/photos', defaultTitle: '' })
+const activeSessions = ref([])
 const fallback = `${import.meta.env.BASE_URL}images/no-photo.jpg`
 
 const groupPhoto = computed(
@@ -33,6 +34,7 @@ onMounted(async () => {
       api.getFiles('lists'),
       api.getConfig(),
     ])
+    await detectActiveSessions()
     if (presentation.listName && files.value.some((file) => file.name === presentation.listName)) {
       selectedFile.value = presentation.listName
     }
@@ -43,6 +45,30 @@ onMounted(async () => {
     ui.notify(error.message)
   }
 })
+
+async function detectActiveSessions() {
+  const controllerPrefix = 'diplopresent.controller.'
+  const rememberedSessionId = sessionStorage.getItem('diplopresent.activeSession')
+  const controllerSessionIds = Object.keys(sessionStorage)
+    .filter((key) => key.startsWith(controllerPrefix))
+    .map((key) => key.slice(controllerPrefix.length))
+  const sessionIds = [...new Set([rememberedSessionId, ...controllerSessionIds].filter(Boolean))]
+  const sessions = []
+
+  for (const sessionId of sessionIds) {
+    try {
+      sessions.push(await api.getSession(sessionId))
+    } catch {
+      sessionStorage.removeItem(`diplopresent.controller.${sessionId}`)
+      if (rememberedSessionId === sessionId) sessionStorage.removeItem('diplopresent.activeSession')
+    }
+  }
+
+  activeSessions.value = sessions
+  if (sessions.length) {
+    sessionStorage.setItem('diplopresent.activeSession', sessions[0].id)
+  }
+}
 
 async function loadList() {
   if (!selectedFile.value) {
@@ -74,6 +100,12 @@ function createNewList() {
   router.push('/editor')
 }
 
+function returnToDashboard(sessionId) {
+  if (!sessionId) return
+  sessionStorage.setItem('diplopresent.activeSession', sessionId)
+  router.push(`/dashboard/${sessionId}`)
+}
+
 function persistSettings() {
   presentation.photoBaseUrl = config.value.photoBaseUrl
   presentation.persist()
@@ -103,6 +135,8 @@ async function startSharedPresentation() {
       `diplopresent.controller.${result.session.id}`,
       result.controllerToken,
     )
+    sessionStorage.setItem('diplopresent.activeSession', result.session.id)
+    activeSessions.value = [result.session, ...activeSessions.value.filter((session) => session.id !== result.session.id)]
     await router.push(`/dashboard/${result.session.id}`)
   } catch (error) {
     ui.notify(error.message)
@@ -115,6 +149,37 @@ async function startSharedPresentation() {
 <template>
   <main class="page-shell">
     <AppHeader compact />
+    <section v-if="activeSessions.length" class="content-width mb-6 space-y-3">
+      <div
+        v-for="liveSession in activeSessions"
+        :key="liveSession.id"
+        class="rounded-2xl border border-white/60 bg-white/70 p-4 shadow-sm backdrop-blur"
+      >
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy">
+              <span class="relative flex h-3 w-3">
+                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"></span>
+                <span class="relative inline-flex h-3 w-3 rounded-full bg-red-600"></span>
+              </span>
+              Live sessie actief
+              <span class="text-slate-500"> (sessie-id <code>{{ liveSession.id }}</code>)</span>
+            </p>
+            <p class="mt-1 text-slate-700">
+              {{ liveSession.title || liveSession.listName }}
+              <span class="text-slate-500">· {{ liveSession.listName }}</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            class="button-primary shrink-0"
+            @click="returnToDashboard(liveSession.id)"
+          >
+            Terug naar live dashboard <MonitorUp :size="18" />
+          </button>
+        </div>
+      </div>
+    </section>
     <div class="content-width grid gap-6 lg:grid-cols-3">
       <section class="panel">
         <span class="mb-3 block text-sm font-bold uppercase tracking-wide text-navy">Stap 1</span>

@@ -67,4 +67,9 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ controllerToken, ...changes }),
     }),
+  deleteSession: (id, controllerToken) =>
+    request(`session.php?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ controllerToken }),
+    }),
 }

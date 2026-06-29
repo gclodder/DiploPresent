@@ -5,6 +5,7 @@ import {
   GraduationCap,
   MonitorUp,
   RotateCcw,
+  Trash2,
 } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
@@ -90,6 +91,29 @@ function openLive() {
 async function copyLiveUrl() {
   await navigator.clipboard.writeText(liveUrl.value)
   ui.notify('Gedeelde beamer-URL gekopieerd.')
+}
+
+async function killSession() {
+  if (!controllerToken || busy.value) return
+  const confirmed = window.confirm(
+    'Weet je zeker dat je deze live sessie wilt stoppen? Het beamerbeeld verliest dan de koppeling met dit dashboard.',
+  )
+  if (!confirmed) return
+
+  busy.value = true
+  try {
+    await api.deleteSession(sessionId, controllerToken)
+    sessionStorage.removeItem(`diplopresent.controller.${sessionId}`)
+    if (sessionStorage.getItem('diplopresent.activeSession') === sessionId) {
+      sessionStorage.removeItem('diplopresent.activeSession')
+    }
+    ui.notify('Live sessie gestopt.')
+    await router.push('/presenter')
+  } catch (error) {
+    ui.notify(error.message)
+  } finally {
+    busy.value = false
+  }
 }
 
 function onKeydown(event) {
@@ -222,10 +246,20 @@ onBeforeUnmount(() => {
           >
             {{ session.testPattern ? 'Verberg testbeeld' : 'Toon testbeeld' }}
           </button>
+          <button
+            class="button-secondary mt-4 w-full border-red-300 text-red-700 hover:bg-red-100"
+            :disabled="busy"
+            @click="killSession"
+          >
+            <Trash2 :size="18" />
+            Sessie stoppen
+          </button>
           <p class="muted mt-2 text-sm">
             ← vorige · → volgende · 0 titelpagina · V preview · T testbeeld
           </p>
         </section>
+
+        
       </aside>
     </div>
   </main>

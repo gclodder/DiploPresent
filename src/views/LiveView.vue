@@ -328,15 +328,15 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(90deg,#030c20_0%,#204568_50%,#030c20_100%)] p-8">
-    <section v-if="phase === 'start'" class="relative w-full max-w-6xl text-center">
-      <h1 class="absolute left-8 top-8 z-10 text-4xl font-bold drop-shadow-lg">
+    <section v-if="phase === 'start'" class="relative flex w-full max-w-6xl flex-col items-center gap-6 text-center">
+      <h1 v-if="presentation.title" class="text-4xl font-bold text-white drop-shadow-lg md:text-5xl">
         {{ presentation.title }}
       </h1>
       <img
         v-if="presentation.students.length"
         :src="groupPhoto"
         alt="Groepsfoto"
-        class="max-h-[78vh] w-full rounded-3xl object-contain shadow-2xl"
+        class="max-h-[72vh] w-full rounded-3xl object-contain shadow-2xl"
         @error="($event.target.src = fallback)"
       />
       <div v-else class="panel mx-auto max-w-xl">

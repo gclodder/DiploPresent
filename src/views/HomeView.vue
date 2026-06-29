@@ -28,12 +28,12 @@ import AppHeader from '../components/AppHeader.vue'
           <p class="mt-2 text-slate-600">Kies een opgeslagen lijst en start de diplomapresentatie.</p>
         </RouterLink>
         <RouterLink
-          to="/admin"
+          to="/beheer"
           class="group panel relative overflow-hidden transition hover:-rotate-1 hover:scale-[1.02]"
         >
           <div class="absolute inset-0 origin-bottom scale-y-0 bg-gold transition-transform duration-300 group-hover:scale-y-100 z-[-1]" />
           <Settings :size="64" class="mb-4 text-navy" />
-          <h1 class="text-2xl font-bold">Admin</h1>
+          <h1 class="text-2xl font-bold">Beheer</h1>
           <p class="mt-2 text-slate-600">Beheer groepsfoto’s en standaardinstellingen voor presentaties.</p>
         </RouterLink>
       </section>

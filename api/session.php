@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
-require_method('GET', 'POST', 'PUT');
+require_method('GET', 'POST', 'PUT', 'DELETE');
 
 function parse_session_code(string $value): string
 {
@@ -64,6 +64,13 @@ $body = json_body();
 $token = (string) ($body['controllerToken'] ?? '');
 if (!hash_equals((string) ($session['controllerToken'] ?? ''), $token)) {
     fail('Ongeldige controllercode.', 403);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    if (!unlink($path)) {
+        fail('Sessie kon niet worden verwijderd.', 500);
+    }
+    respond(['deleted' => true]);
 }
 
 if (array_key_exists('index', $body)) {

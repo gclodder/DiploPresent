@@ -40,7 +40,7 @@ async function saveConfig() {
   busy.value = true
   try {
     config.value = await api.updateConfig(config.value)
-    ui.notify('Admin-instellingen opgeslagen.')
+    ui.notify('Beheerinstellingen opgeslagen.')
   } catch (error) {
     ui.notify(error.message)
   } finally {
@@ -85,7 +85,7 @@ onMounted(load)
     <AppHeader compact />
     <div class="content-width space-y-6">
       <section class="panel">
-        <p class="text-sm font-bold uppercase tracking-wide text-navy">Admin</p>
+        <p class="text-sm font-bold uppercase tracking-wide text-navy">Beheer</p>
         <h1 class="mt-1 text-2xl font-bold">Algemene instellingen</h1>
         <label class="mt-5 block max-w-2xl">
           <span class="mb-1 block font-semibold">Default titel op de titelpagina</span>
