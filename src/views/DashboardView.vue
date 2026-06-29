@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   Copy,
+  GraduationCap,
   MonitorUp,
   RotateCcw,
 } from 'lucide-vue-next'
@@ -173,13 +174,20 @@ onBeforeUnmount(() => {
               :disabled="busy"
               @click="jumpTo(index)"
             >
-              <div class="aspect-[4/5] overflow-hidden rounded-xl bg-slate-100">
+              <div class="relative aspect-[4/5] overflow-hidden rounded-xl bg-slate-100">
                 <img
                   :src="newPhotoUrl(student)"
                   :alt="student.fullName"
                   class="h-full w-full object-cover transition group-hover:scale-105"
                   @error="useFallback"
                 />
+                <span
+                  v-if="student.cumLaude"
+                  class="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-gold px-2 py-1 text-[0.65rem] font-black uppercase tracking-wide text-ink shadow"
+                >
+                  <GraduationCap :size="13" />
+                  Cum laude
+                </span>
               </div>
               <p class="mt-2 line-clamp-2 min-h-10 text-center text-sm font-bold leading-tight text-slate-900">
                 {{ student.fullName }}
