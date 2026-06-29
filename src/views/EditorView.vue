@@ -4,6 +4,7 @@ import { VueDraggable } from 'vue-draggable-plus'
 import {
   ArrowDownAZ,
   Download,
+  FileJson,
   FileSpreadsheet,
   GraduationCap,
   GripVertical,
@@ -16,12 +17,15 @@ import {
 import AppHeader from '../components/AppHeader.vue'
 import PhotoPair from '../components/PhotoPair.vue'
 import { api } from '../api/client'
-import { parseCsv, renumber, safeListName, selectStudents } from '../domain/students'
+import { normalizeJson, parseCsv, renumber, safeListName, selectStudents } from '../domain/students'
 import { useUiStore } from '../stores/ui'
 
 const ui = useUiStore()
-const files = ref([])
+const csvFiles = ref([])
+const jsonFiles = ref([])
+const editorMode = ref('csv')
 const selectedFile = ref('')
+const selectedJsonFile = ref('')
 const sourceStudents = ref([])
 const listType = ref('mentor')
 const selectedChoices = ref([])
@@ -52,12 +56,18 @@ const visibleStudents = computed(() => {
     ),
   )
 })
-const proposedName = computed(() => safeListName(selectedChoices.value))
-const listTypeLabel = computed(() => (listType.value === 'mentor' ? 'mentor' : 'stamgroep'))
-const canSave = computed(
-  () => selectedChoices.value.length > 0 && listStudents.value.length > 0,
+const proposedName = computed(() =>
+  editorMode.value === 'json' && selectedJsonFile.value
+    ? selectedJsonFile.value
+    : safeListName(selectedChoices.value),
 )
+const listTypeLabel = computed(() => (listType.value === 'mentor' ? 'mentor' : 'stamgroep'))
+const canSave = computed(() => listStudents.value.length > 0 && proposedName.value)
 const hasFirstNames = computed(() => listStudents.value.some((student) => student.firstName))
+
+function displayFileName(fileName) {
+  return fileName.replace(/\.[^.]+$/u, '')
+}
 
 onMounted(async () => {
   await Promise.all([loadFiles(), loadConfig()])
@@ -73,7 +83,10 @@ async function loadConfig() {
 
 async function loadFiles() {
   try {
-    files.value = await api.getFiles('imports')
+    ;[csvFiles.value, jsonFiles.value] = await Promise.all([
+      api.getFiles('imports'),
+      api.getFiles('lists'),
+    ])
   } catch (error) {
     ui.notify(error.message)
   }
@@ -83,6 +96,18 @@ function resetSelection() {
   selectedChoices.value = []
   listStudents.value = []
   search.value = ''
+}
+
+function resetEditor() {
+  selectedFile.value = ''
+  selectedJsonFile.value = ''
+  sourceStudents.value = []
+  resetSelection()
+}
+
+function switchMode(mode) {
+  editorMode.value = mode
+  resetEditor()
 }
 
 async function loadSelected() {
@@ -107,8 +132,33 @@ async function loadSelected() {
 }
 
 async function selectFile(fileName) {
+  editorMode.value = 'csv'
+  selectedJsonFile.value = ''
   selectedFile.value = fileName
   await loadSelected()
+}
+
+async function selectJsonFile(fileName) {
+  editorMode.value = 'json'
+  selectedFile.value = ''
+  sourceStudents.value = []
+  selectedJsonFile.value = fileName
+  loading.value = true
+  try {
+    const list = await api.getList(fileName)
+    listStudents.value = normalizeJson(list.content)
+    listType.value = list.content.listType || 'mentor'
+    selectedChoices.value = Array.isArray(list.content.selection) && list.content.selection.length
+      ? list.content.selection
+      : [fileName.replace(/\.json$/i, '')]
+    search.value = ''
+    ui.notify(`${listStudents.value.length} leerlingen geladen uit ${fileName}.`)
+  } catch (error) {
+    resetSelection()
+    ui.notify(error.message)
+  } finally {
+    loading.value = false
+  }
 }
 
 async function uploadFile(event) {
@@ -118,6 +168,8 @@ async function uploadFile(event) {
   try {
     const result = await api.uploadImport(file)
     await loadFiles()
+    editorMode.value = 'csv'
+    selectedJsonFile.value = ''
     selectedFile.value = result.name
     await loadSelected()
     ui.notify(`${result.name} geüpload; een bestaand bestand is indien nodig vervangen.`)
@@ -125,6 +177,36 @@ async function uploadFile(event) {
     ui.notify(error.message)
   } finally {
     event.target.value = ''
+    loading.value = false
+  }
+}
+
+async function deleteCsv(fileName) {
+  if (!window.confirm(`${fileName} verwijderen?`)) return
+  loading.value = true
+  try {
+    await api.deleteImport(fileName)
+    if (selectedFile.value === fileName) resetEditor()
+    await loadFiles()
+    ui.notify(`${fileName} verwijderd.`)
+  } catch (error) {
+    ui.notify(error.message)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function deleteJson(fileName) {
+  if (!window.confirm(`${fileName} verwijderen?`)) return
+  loading.value = true
+  try {
+    await api.deleteList(fileName)
+    if (selectedJsonFile.value === fileName) resetEditor()
+    await loadFiles()
+    ui.notify(`${fileName} verwijderd.`)
+  } catch (error) {
+    ui.notify(error.message)
+  } finally {
     loading.value = false
   }
 }
@@ -171,7 +253,12 @@ async function saveList() {
   if (!canSave.value) return
   saving.value = true
   try {
-    await api.saveList(proposedName.value, listStudents.value)
+    await api.saveList(proposedName.value, listStudents.value, {
+      listType: listType.value,
+      selection: selectedChoices.value,
+    })
+    await loadFiles()
+    if (editorMode.value === 'json') selectedJsonFile.value = proposedName.value
     ui.notify(`${proposedName.value} opgeslagen in de getoonde volgorde.`)
   } catch (error) {
     ui.notify(error.message)
@@ -209,11 +296,29 @@ function downloadList() {
     <AppHeader compact />
     <div class="content-width space-y-6">
       <section class="panel">
-        <div class="mb-4">
-          <h1 class="text-lg font-bold">1. Kies of upload de CSV uit het schoolsysteem</h1>
+        <div class="mb-5">
+          <h1 class="text-lg font-bold">1. Kies je bron</h1>
           <p class="muted mt-1">
-            Selecteer een bestaande import of voeg een nieuwe CSV toe. Uploaden vervangt een bestaand bestand met dezelfde naam.
+            Maak een nieuwe lijst vanuit een CSV, of open een bestaande JSON-presentatielijst om de volgorde/cum laude te bewerken.
           </p>
+          <div class="mt-4 grid max-w-xl grid-cols-2 gap-2">
+            <button
+              class="rounded-lg border p-3 text-center font-semibold"
+              :class="editorMode === 'csv' ? 'border-gold-dark bg-gold text-ink' : 'border-slate-300'"
+              type="button"
+              @click="switchMode('csv')"
+            >
+              Nieuwe lijst uit CSV
+            </button>
+            <button
+              class="rounded-lg border p-3 text-center font-semibold"
+              :class="editorMode === 'json' ? 'border-gold-dark bg-gold text-ink' : 'border-slate-300'"
+              type="button"
+              @click="switchMode('json')"
+            >
+              Bestaande JSON bewerken
+            </button>
+          </div>
         </div>
 
         <input
@@ -224,31 +329,47 @@ function downloadList() {
           @change="uploadFile"
         />
 
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          <button
-            v-for="file in files"
+        <div v-if="editorMode === 'csv'" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <article
+            v-for="file in csvFiles"
             :key="file.name"
-            type="button"
             class="rounded-2xl border bg-white p-4 text-left text-ink shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-wait"
             :class="
               selectedFile === file.name
                 ? 'border-navy ring-4 ring-navy/20'
                 : 'border-slate-200 hover:border-navy/40'
             "
-            :disabled="loading"
             @click="selectFile(file.name)"
           >
-            <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gold/50 text-navy">
-              <FileSpreadsheet :size="28" />
+            <div class="mb-4 flex items-start justify-between gap-3">
+              <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/50 text-navy">
+                <FileSpreadsheet :size="28" />
+              </span>
+              <span class="flex items-center gap-1">
+                <span class="rounded-full bg-navy px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white">
+                  .csv
+                </span>
+                <button
+                  class="rounded-full p-1.5 text-red-700 hover:bg-red-100"
+                  type="button"
+                  :disabled="loading"
+                  :aria-label="`${file.name} verwijderen`"
+                  @click.stop="deleteCsv(file.name)"
+                >
+                  <Trash2 :size="16" />
+                </button>
+              </span>
             </div>
-            <p class="break-words font-bold leading-tight">{{ file.name }}</p>
-            <p
-              v-if="selectedFile === file.name"
-              class="mt-3 inline-flex rounded-full bg-navy px-3 py-1 text-xs font-bold text-white"
-            >
-              Geselecteerd
-            </p>
-          </button>
+            <p class="break-words font-bold leading-tight">{{ displayFileName(file.name) }}</p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <p
+                v-if="selectedFile === file.name"
+                class="inline-flex rounded-full bg-navy px-3 py-1 text-xs font-bold text-white"
+              >
+                Geselecteerd
+              </p>
+            </div>
+          </article>
 
           <button
             type="button"
@@ -262,6 +383,70 @@ function downloadList() {
               </span>
               <span class="block font-bold">Nieuwe CSV uploaden</span>
               <span class="mt-1 block text-sm text-slate-500">of bestaande vervangen</span>
+            </span>
+          </button>
+        </div>
+
+        <div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <article
+            v-for="file in jsonFiles"
+            :key="file.name"
+            class="rounded-2xl border bg-white p-4 text-left text-ink shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+            :class="
+              selectedJsonFile === file.name
+                ? 'border-navy ring-4 ring-navy/20'
+                : 'border-slate-200 hover:border-navy/40'
+            "
+            @click="selectJsonFile(file.name)"
+          >
+            <div class="mb-3 flex items-start justify-between gap-3">
+              <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/50 text-navy">
+                <FileJson :size="28" />
+              </span>
+              <span class="flex items-center gap-1">
+                <span class="rounded-full bg-navy px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white">
+                  .json
+                </span>
+                <button
+                  class="rounded-full p-1.5 text-red-700 hover:bg-red-100"
+                  type="button"
+                  :disabled="loading"
+                  :aria-label="`${file.name} verwijderen`"
+                  @click.stop="deleteJson(file.name)"
+                >
+                  <Trash2 :size="16" />
+                </button>
+              </span>
+            </div>
+            <p class="break-words font-bold leading-tight">{{ displayFileName(file.name) }}</p>
+            <p class="muted mt-2">
+              {{
+                Number.isFinite(file.studentCount)
+                  ? `${file.studentCount} leerlingen`
+                  : 'Aantal leerlingen onbekend'
+              }}
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <p
+                v-if="selectedJsonFile === file.name"
+                class="inline-flex rounded-full bg-navy px-3 py-1 text-xs font-bold text-white"
+              >
+                Geselecteerd
+              </p>
+            </div>
+          </article>
+
+          <button
+            type="button"
+            class="grid min-h-40 place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/70 p-4 text-center text-ink transition hover:-translate-y-0.5 hover:border-navy hover:bg-white hover:shadow-lg"
+            @click="switchMode('csv')"
+          >
+            <span>
+              <span class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-navy text-white">
+                <Plus :size="32" />
+              </span>
+              <span class="block font-bold">Nieuwe lijst maken</span>
+              <span class="mt-1 block text-sm text-slate-500">Start vanuit CSV</span>
             </span>
           </button>
         </div>

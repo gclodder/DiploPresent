@@ -22,6 +22,10 @@ const groupPhoto = computed(
     `${import.meta.env.BASE_URL}${config.value.photoBaseUrl}/examenfoto_${presentation.department}.jpg`,
 )
 
+function displayFileName(fileName) {
+  return fileName.replace(/\.[^.]+$/u, '')
+}
+
 onMounted(async () => {
   presentation.restore()
   try {
@@ -137,7 +141,7 @@ async function startSharedPresentation() {
                 .json
               </span>
             </div>
-            <p class="break-words font-bold leading-tight">{{ file.name }}</p>
+            <p class="break-words font-bold leading-tight">{{ displayFileName(file.name) }}</p>
             <p class="muted mt-2">
               {{
                 Number.isFinite(file.studentCount)

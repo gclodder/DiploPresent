@@ -1,8 +1,3 @@
-AuthUserFile /absolute/path/to/.htpasswd
-AuthType Basic
-AuthName "DiploPresent"
-Require valid-user
-
 Options -Indexes
 
 <FilesMatch "^\.">

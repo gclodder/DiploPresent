@@ -1,4 +1,5 @@
 <script setup>
+import { inject } from 'vue'
 import { RouterLink } from 'vue-router'
 
 defineProps({
@@ -6,6 +7,7 @@ defineProps({
 })
 
 const logo = `${import.meta.env.BASE_URL}images/DP-logo.png`
+const logout = inject('logout', null)
 </script>
 
 <template>
@@ -22,6 +24,7 @@ const logo = `${import.meta.env.BASE_URL}images/DP-logo.png`
       <RouterLink class="button-secondary" to="/editor">Editor</RouterLink>
       <RouterLink class="button-secondary" to="/presenter">Presenter</RouterLink>
       <RouterLink class="button-secondary" to="/admin">Admin</RouterLink>
+      <button v-if="logout" class="button-secondary" type="button" @click="logout">Uitloggen</button>
     </nav>
   </header>
 </template>

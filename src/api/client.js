@@ -2,6 +2,7 @@ const apiPath = (endpoint) => `${import.meta.env.BASE_URL}api/${endpoint}`.repla
 
 async function request(endpoint, options = {}) {
   const response = await fetch(apiPath(endpoint), {
+    credentials: 'same-origin',
     ...options,
     headers: {
       Accept: 'application/json',
@@ -25,6 +26,10 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
+  getAuth: () => request('auth.php'),
+  login: (password) =>
+    request('auth.php', { method: 'POST', body: JSON.stringify({ password }) }),
+  logout: () => request('auth.php', { method: 'DELETE' }),
   getConfig: () => request('config.php'),
   updateConfig: (config) =>
     request('config.php', { method: 'PUT', body: JSON.stringify(config) }),
@@ -39,11 +44,15 @@ export const api = {
     request(`group-photo.php?department=${encodeURIComponent(department)}`, { method: 'DELETE' }),
   getFiles: (type) => request(`files.php?type=${encodeURIComponent(type)}`),
   getImport: (name) => request(`import.php?name=${encodeURIComponent(name)}`),
+  deleteImport: (name) =>
+    request(`import.php?name=${encodeURIComponent(name)}`, { method: 'DELETE' }),
   getList: (name) => request(`lists.php?name=${encodeURIComponent(name)}`),
-  saveList: (name, students) =>
+  deleteList: (name) =>
+    request(`lists.php?name=${encodeURIComponent(name)}`, { method: 'DELETE' }),
+  saveList: (name, students, metadata = {}) =>
     request('lists.php', {
       method: 'POST',
-      body: JSON.stringify({ name, students }),
+      body: JSON.stringify({ name, students, ...metadata }),
     }),
   uploadImport: (file) => {
     const body = new FormData()

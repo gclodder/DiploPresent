@@ -7,9 +7,99 @@ const IMPORT_ROOT = STORAGE_ROOT . '/imports';
 const LIST_ROOT = STORAGE_ROOT . '/lists';
 const SESSION_ROOT = STORAGE_ROOT . '/sessions';
 const CONFIG_FILE = STORAGE_ROOT . '/config.json';
+const ENV_FILE = APP_ROOT . '/.env';
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
+
+function env_config(): array
+{
+    static $config = null;
+    if ($config !== null) {
+        return $config;
+    }
+
+    $config = [];
+    if (!is_file(ENV_FILE)) {
+        return $config;
+    }
+
+    $lines = file(ENV_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($lines === false) {
+        return $config;
+    }
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
+            continue;
+        }
+
+        [$key, $value] = explode('=', $line, 2);
+        $key = trim($key);
+        $value = trim($value);
+        if ($key === '') {
+            continue;
+        }
+
+        if (
+            strlen($value) >= 2
+            && (($value[0] === '"' && substr($value, -1) === '"') || ($value[0] === "'" && substr($value, -1) === "'"))
+        ) {
+            $value = substr($value, 1, -1);
+        }
+
+        $config[$key] = $value;
+    }
+
+    return $config;
+}
+
+function env_value(string $key, string $default = ''): string
+{
+    $fromServer = $_SERVER[$key] ?? getenv($key);
+    if (is_string($fromServer) && $fromServer !== '') {
+        return $fromServer;
+    }
+
+    return env_config()[$key] ?? $default;
+}
+
+function auth_session_name(): string
+{
+    $name = env_value('DIPLOPRESENT_SESSION_NAME', 'diplopresent_auth');
+    return preg_match('/^[A-Za-z0-9_-]{6,64}$/', $name) ? $name : 'diplopresent_auth';
+}
+
+function start_auth_session(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+
+    session_name(auth_session_name());
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
+function is_authenticated(): bool
+{
+    start_auth_session();
+    return ($_SESSION['authenticated'] ?? false) === true;
+}
+
+function require_auth(): void
+{
+    if (!is_authenticated()) {
+        fail('Niet ingelogd.', 401);
+    }
+}
 
 function respond(mixed $data = null, int $status = 200): never
 {
@@ -72,6 +162,40 @@ function ensure_storage(): void
             fail('Opslagmap kan niet worden aangemaakt.', 500);
         }
     }
+
+    $rules = [
+        STORAGE_ROOT . '/.htaccess' => <<<'HTACCESS'
+Options -Indexes
+
+<Files "config.json">
+    Require all denied
+</Files>
+
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(php|phtml|phar)$">
+    Require all denied
+</FilesMatch>
+HTACCESS,
+        IMPORT_ROOT . '/.htaccess' => "Require all denied\n",
+        LIST_ROOT . '/.htaccess' => "Require all denied\n",
+        SESSION_ROOT . '/.htaccess' => "Require all denied\n",
+        STORAGE_ROOT . '/photos/.htaccess' => <<<'HTACCESS'
+Options -Indexes
+
+<FilesMatch "\.(php|phtml|phar)$">
+    Require all denied
+</FilesMatch>
+HTACCESS,
+    ];
+
+    foreach ($rules as $path => $content) {
+        if (!is_file($path)) {
+            @file_put_contents($path, $content);
+        }
+    }
 }
 
 function safe_filename(string $name, array $extensions): string
@@ -126,3 +250,7 @@ function read_json_file(string $path): array
 }
 
 ensure_storage();
+
+if (basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')) !== 'auth.php') {
+    require_auth();
+}

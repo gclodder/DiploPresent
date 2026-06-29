@@ -6,6 +6,7 @@ Vue 3 + Vite + Tailwind frontend met een PHP JSON-API. Node.js is alleen nodig v
 
 ```powershell
 npm install
+Copy-Item .env.example .env
 npm run dev
 ```
 
@@ -24,17 +25,42 @@ npm run dev:host
 
 Open daarna `http://<ip-adres-van-deze-computer>:5173/`. De PHP API blijft lokaal op `127.0.0.1:8080`; Vite proxyt `/api` en `/storage` door.
 
+## Login configureren
+
+DiploPresent gebruikt een eigen loginpagina met PHP-sessiecookie. Het wachtwoord staat niet in de Vue-build.
+
+Maak lokaal of op de server een `.env` bestand op basis van `.env.example`:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Genereer een wachtwoordhash:
+
+```powershell
+php -r "echo password_hash('jouw-wachtwoord', PASSWORD_DEFAULT), PHP_EOL;"
+```
+
+Zet de output in `.env`:
+
+```env
+DIPLOPRESENT_PASSWORD_HASH="$2y$..."
+DIPLOPRESENT_SESSION_NAME="diplopresent_auth"
+```
+
+Commit `.env` niet. Alleen `.env.example` hoort in Git.
+
 ## Productiebuild
 
 ```powershell
 npm run build
 ```
 
-Kopieer daarna de inhoud van `dist/` naar de webmap `/diplo/` en plaats `api/`, `storage/` en `.htaccess` ernaast. De map `images/` zit al in de build.
+Kopieer daarna de inhoud van `dist/` naar de webmap `/diplo/`. `npm run build` zet automatisch `api/`, `.htaccess`, `.env.example`, `images/` en een lege `storage/` in `dist/`. Echte runtime-data uit je lokale `storage/` wordt niet meegenomen.
 
-De mappen `storage/imports`, `storage/lists`, `storage/photos` en `storage/sessions` moeten voor PHP leesbaar zijn. `storage/imports`, `storage/lists` en `storage/sessions` moeten ook schrijfbaar zijn.
+De mappen `storage/imports`, `storage/lists`, `storage/photos` en `storage/sessions` moeten voor PHP leesbaar zijn. `storage/imports`, `storage/lists`, `storage/photos` en `storage/sessions` moeten ook schrijfbaar zijn voor upload/configuratie.
 
-De root-`.htaccess` beschermt de volledige app met HTTP Basic Authentication. Pas vóór deployment het absolute pad bij `AuthUserFile` aan wanneer de hostinglocatie afwijkt.
+De root-`.htaccess` beschermt geen Basic Auth meer. Authenticatie loopt via `api/auth.php`. De `.htaccess`-regels blokkeren wel indexering, dotfiles en directe toegang tot gevoelige storage-bestanden.
 
 ## Data
 
