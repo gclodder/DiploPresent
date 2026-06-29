@@ -25,7 +25,7 @@ const config = ref({ photoBaseUrl: 'storage/photos' })
 
 const liveUrl = computed(() => {
   const resolved = router.resolve({ name: 'live', query: { session: sessionId } })
-  return new URL(resolved.href, window.location.origin).href
+  return new URL(resolved.href, window.location.href).href
 })
 const fallbackPhoto = computed(() => `${import.meta.env.BASE_URL}images/no-photo.jpg`)
 
