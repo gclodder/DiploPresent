@@ -391,7 +391,7 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <img :src="schoolLogo" alt="Spieringshoek" class="fixed bottom-5 left-1/2 w-40 -translate-x-1/2 opacity-80" />
+    <img :src="schoolLogo" alt="Spieringshoek" class="fixed bottom-5 left-1/2 w-80 -translate-x-1/2 opacity-80" />
     <div class="group fixed bottom-0 left-0 z-30 p-4">
       <div
         class="live-jump-list pointer-events-none absolute bottom-[calc(100%-1rem)] left-4 mb-3 max-h-[55vh] w-80 overflow-y-auto rounded-2xl border border-white/15 bg-slate-950/65 p-2 opacity-0 shadow-2xl backdrop-blur-md transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100"

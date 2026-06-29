@@ -1,7 +1,7 @@
 {
   "name": "diplopresent-3",
   "private": true,
-  "version": "3.1.1",
+  "version": "3.1.2",
   "type": "module",
   "scripts": {
     "dev": "concurrently --kill-others --names API,VITE --prefix-colors yellow,cyan \"npm:dev:api\" \"npm:dev:frontend\"",
@@ -19,6 +19,7 @@
     "papaparse": "^5.4.1",
     "pinia": "^2.3.0",
     "vue": "^3.5.13",
+    "vue-advanced-cropper": "^2.8.9",
     "vue-draggable-plus": "^0.6.0",
     "vue-router": "^4.5.0"
   },

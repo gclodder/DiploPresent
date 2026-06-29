@@ -1,6 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { Image, Save, Trash2, UploadCloud } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { Cropper } from 'vue-advanced-cropper'
+import 'vue-advanced-cropper/dist/style.css'
+import { Image, Save, Trash2, UploadCloud, X } from 'lucide-vue-next'
 import AppHeader from '../components/AppHeader.vue'
 import { api } from '../api/client'
 import { useUiStore } from '../stores/ui'
@@ -15,7 +17,15 @@ const config = ref({
 const photos = ref([])
 const busy = ref(false)
 const uploadInputs = ref({})
+const cropper = ref(null)
+const cropModal = ref({
+  department: '',
+  fileName: '',
+  imageUrl: '',
+})
 const fallback = `${import.meta.env.BASE_URL}images/no-photo.jpg`
+const maxCropWidth = 1920
+const maxCropHeight = 1080
 
 const photoByDepartment = computed(() =>
   Object.fromEntries(photos.value.map((photo) => [photo.department, photo])),
@@ -48,18 +58,76 @@ async function saveConfig() {
   }
 }
 
-async function uploadPhoto(department, event) {
+function closeCropModal() {
+  if (cropModal.value.imageUrl) {
+    URL.revokeObjectURL(cropModal.value.imageUrl)
+  }
+  cropModal.value = {
+    department: '',
+    fileName: '',
+    imageUrl: '',
+  }
+}
+
+function openCropModal(department, event) {
   const file = event.target.files?.[0]
+  event.target.value = ''
   if (!file) return
+
+  if (!['image/jpeg', 'image/pjpeg'].includes(file.type)) {
+    ui.notify('Alleen JPG-groepsfoto’s zijn toegestaan.')
+    return
+  }
+
+  closeCropModal()
+  cropModal.value = {
+    department,
+    fileName: file.name,
+    imageUrl: URL.createObjectURL(file),
+  }
+}
+
+function canvasToJpegBlob(canvas) {
+  const scale = Math.min(1, maxCropWidth / canvas.width, maxCropHeight / canvas.height)
+  const targetCanvas = document.createElement('canvas')
+  targetCanvas.width = Math.max(1, Math.round(canvas.width * scale))
+  targetCanvas.height = Math.max(1, Math.round(canvas.height * scale))
+  const context = targetCanvas.getContext('2d')
+  context.drawImage(canvas, 0, 0, targetCanvas.width, targetCanvas.height)
+
+  return new Promise((resolve, reject) => {
+    targetCanvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob)
+        else reject(new Error('De uitgesneden foto kon niet worden verwerkt.'))
+      },
+      'image/jpeg',
+      0.9,
+    )
+  })
+}
+
+async function saveCroppedPhoto() {
+  if (!cropModal.value.department || !cropper.value) return
   busy.value = true
   try {
-    await api.uploadGroupPhoto(department, file)
+    const result = cropper.value.getResult()
+    if (!result?.canvas) {
+      throw new Error('Selecteer eerst een uitsnede.')
+    }
+    const blob = await canvasToJpegBlob(result.canvas)
+    const file = new File(
+      [blob],
+      `examenfoto_${cropModal.value.department}.jpg`,
+      { type: 'image/jpeg' },
+    )
+    await api.uploadGroupPhoto(cropModal.value.department, file)
     photos.value = await api.getGroupPhotos()
-    ui.notify(`Groepsfoto voor ${department.toUpperCase()} opgeslagen.`)
+    ui.notify(`Groepsfoto voor ${cropModal.value.department.toUpperCase()} opgeslagen.`)
+    closeCropModal()
   } catch (error) {
     ui.notify(error.message)
   } finally {
-    event.target.value = ''
     busy.value = false
   }
 }
@@ -78,6 +146,7 @@ async function deletePhoto(department) {
 }
 
 onMounted(load)
+onBeforeUnmount(closeCropModal)
 </script>
 
 <template>
@@ -148,7 +217,7 @@ onMounted(load)
               class="hidden"
               type="file"
               accept=".jpg,.jpeg,image/jpeg"
-              @change="uploadPhoto(department, $event)"
+              @change="openCropModal(department, $event)"
             />
 
             <div class="mt-4 grid gap-2 sm:grid-cols-2">
@@ -173,5 +242,65 @@ onMounted(load)
         </div>
       </section>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="cropModal.imageUrl"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+      >
+        <section class="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+          <header class="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
+            <div>
+              <p class="text-sm font-bold uppercase tracking-wide text-navy">Groepsfoto bijsnijden</p>
+              <h2 class="mt-1 text-2xl font-bold">
+                {{ cropModal.department.toUpperCase() }}
+              </h2>
+              <p class="muted mt-1">
+                Sleep en zoom de uitsnede. De foto wordt maximaal {{ maxCropWidth }}×{{ maxCropHeight }} opgeslagen.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              :disabled="busy"
+              aria-label="Bijsnijden annuleren"
+              @click="closeCropModal"
+            >
+              <X :size="24" />
+            </button>
+          </header>
+
+          <div class="min-h-0 flex-1 bg-slate-950 p-4">
+            <Cropper
+              ref="cropper"
+              class="h-[62vh] max-h-[620px] rounded-2xl bg-slate-900"
+              :src="cropModal.imageUrl"
+              :stencil-props="{ movable: true, resizable: true }"
+              image-restriction="stencil"
+            />
+          </div>
+
+          <footer class="flex flex-col gap-3 border-t border-slate-200 p-5 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              class="button-secondary border-slate-300 text-slate-700"
+              :disabled="busy"
+              @click="closeCropModal"
+            >
+              Annuleren
+            </button>
+            <button
+              type="button"
+              class="button-primary"
+              :disabled="busy"
+              @click="saveCroppedPhoto"
+            >
+              <UploadCloud :size="18" />
+              {{ busy ? 'Opslaan…' : 'Opslaan' }}
+            </button>
+          </footer>
+        </section>
+      </div>
+    </Teleport>
   </main>
 </template>
