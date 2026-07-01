@@ -47,11 +47,29 @@
   }
 
   .button-primary {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gold-dark bg-gold px-4 py-2 font-semibold text-ink shadow-sm transition hover:bg-gold-dark disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gold-dark bg-gold px-4 py-2 font-semibold text-ink shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .button-secondary {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gold px-4 py-2 font-semibold text-gold transition hover:bg-gold hover:text-ink;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gold px-4 py-2 font-semibold text-gold transition disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .button-primary:hover:not(:disabled),
+  .button-primary:focus-visible:not(:disabled) {
+    border-color: var(--color-gold-dark) !important;
+    background-color: var(--color-gold-dark) !important;
+    color: var(--color-ink) !important;
+    box-shadow: 0 10px 22px rgb(3 12 32 / 18%);
+    transform: translateY(-1px);
+  }
+
+  .button-secondary:hover:not(:disabled),
+  .button-secondary:focus-visible:not(:disabled) {
+    border-color: var(--color-gold-dark) !important;
+    background-color: var(--color-gold) !important;
+    color: var(--color-ink) !important;
+    box-shadow: 0 10px 22px rgb(3 12 32 / 18%);
+    transform: translateY(-1px);
   }
 
   .field {
@@ -110,4 +128,128 @@
   100% {
     transform: translateX(120%) rotate(20deg);
   }
+}
+
+.home-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.home-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.home-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--color-gold);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 280ms ease;
+}
+
+.home-card:hover,
+.home-card:focus-visible {
+  box-shadow: 0 22px 42px rgb(3 12 32 / 24%);
+}
+
+.home-card:hover::before,
+.home-card:focus-visible::before {
+  transform: scaleY(1);
+}
+
+.home-card-left:hover,
+.home-card-left:focus-visible {
+  transform: rotate(-1deg) scale(1.02);
+}
+
+.home-card-right:hover,
+.home-card-right:focus-visible {
+  transform: rotate(1deg) scale(1.02);
+}
+
+.file-card-icon-button {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--color-navy);
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.file-card-icon-button:hover,
+.file-card-icon-button:focus-visible {
+  background-color: rgb(214 191 146 / 45%);
+  color: var(--color-ink);
+  box-shadow: 0 8px 18px rgb(3 12 32 / 14%);
+  transform: translateY(-1px);
+}
+
+.file-card-icon-button-danger {
+  color: #b91c1c;
+}
+
+.file-card-icon-button-danger:hover,
+.file-card-icon-button-danger:focus-visible {
+  background-color: rgb(254 226 226 / 90%);
+  color: #991b1b;
+}
+
+.file-card-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  transform: none;
+  box-shadow: none;
+}
+
+.file-card-icon-button-rename {
+  width: 7.25rem;
+  grid-template-columns: 1fr 1rem;
+  justify-content: end;
+  justify-items: center;
+  gap: 0.45rem;
+  overflow: hidden;
+  padding-inline: 0.75rem;
+  white-space: nowrap;
+}
+
+.file-card-icon-button-rename:hover,
+.file-card-icon-button-rename:focus-visible {
+  width: 7.25rem;
+}
+
+.file-card-icon-label {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  transform: translateX(0.35rem);
+  transition:
+    max-width 160ms ease,
+    opacity 120ms ease,
+    transform 160ms ease;
+  pointer-events: none;
+}
+
+.file-card-icon-button-rename:hover .file-card-icon-label,
+.file-card-icon-button-rename:focus-visible .file-card-icon-label {
+  max-width: 5rem;
+  opacity: 1;
+  transform: translateX(0);
 }

@@ -222,7 +222,7 @@ onBeforeUnmount(closeCropModal)
 
             <div class="mt-4 grid gap-2 sm:grid-cols-2">
               <button
-                class="button-primary"
+                class="button-secondary border-navy text-navy"
                 :disabled="busy"
                 @click="uploadInputs[department]?.click()"
               >
@@ -230,7 +230,7 @@ onBeforeUnmount(closeCropModal)
                 Uploaden
               </button>
               <button
-                class="button-secondary border-red-300 text-red-700 hover:bg-red-100"
+                class="button-secondary border-red-300 text-red-700"
                 :disabled="busy || !photoByDepartment[department]?.exists"
                 @click="deletePhoto(department)"
               >
@@ -247,8 +247,12 @@ onBeforeUnmount(closeCropModal)
       <div
         v-if="cropModal.imageUrl"
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+        @click.self="closeCropModal"
       >
-        <section class="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <section
+          class="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+          @click.stop
+        >
           <header class="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
             <div>
               <p class="text-sm font-bold uppercase tracking-wide text-navy">Groepsfoto bijsnijden</p>

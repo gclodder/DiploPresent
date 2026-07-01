@@ -1,7 +1,11 @@
 <script setup>
+import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Presentation, Settings, UsersRound } from 'lucide-vue-next'
+import { Heart, Presentation, Settings, UsersRound } from 'lucide-vue-next'
 import AppHeader from '../components/AppHeader.vue'
+
+const creditsOpen = ref(false)
+const appVersion = __APP_VERSION__
 </script>
 
 <template>
@@ -11,32 +15,60 @@ import AppHeader from '../components/AppHeader.vue'
       <section class="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
         <RouterLink
           to="/editor"
-          class="group panel relative overflow-hidden transition hover:-rotate-1 hover:scale-[1.02]"
+          class="home-card home-card-left panel"
         >
-          <div class="absolute inset-0 origin-bottom scale-y-0 bg-gold transition-transform duration-300 group-hover:scale-y-100 z-[-1]" />
           <UsersRound :size="64" class="mb-4 text-navy" />
           <h1 class="text-2xl font-bold">Editor</h1>
           <p class="mt-2 text-slate-600">Importeer leerlingen, filter mentoren en bepaal de presentatievolgorde.</p>
         </RouterLink>
         <RouterLink
           to="/presenter"
-          class="group panel relative overflow-hidden transition hover:rotate-1 hover:scale-[1.02]"
+          class="home-card home-card-right panel"
         >
-          <div class="absolute inset-0 origin-bottom scale-y-0 bg-gold transition-transform duration-300 group-hover:scale-y-100 z-[-1]" />
           <Presentation :size="64" class="mb-4 text-navy" />
           <h1 class="text-2xl font-bold">Presenter</h1>
           <p class="mt-2 text-slate-600">Kies een opgeslagen lijst en start de diplomapresentatie.</p>
         </RouterLink>
         <RouterLink
           to="/beheer"
-          class="group panel relative overflow-hidden transition hover:-rotate-1 hover:scale-[1.02]"
+          class="home-card home-card-left panel"
         >
-          <div class="absolute inset-0 origin-bottom scale-y-0 bg-gold transition-transform duration-300 group-hover:scale-y-100 z-[-1]" />
           <Settings :size="64" class="mb-4 text-navy" />
           <h1 class="text-2xl font-bold">Beheer</h1>
           <p class="mt-2 text-slate-600">Beheer groepsfoto’s en standaardinstellingen voor presentaties.</p>
         </RouterLink>
       </section>
+
+      <footer class="mt-10 text-center">
+        <button
+          type="button"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white"
+          @click="creditsOpen = true"
+        >
+          Met <Heart :size="16" class="fill-gold text-gold" /> gemaakt
+        </button>
+      </footer>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="creditsOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm"
+        @click.self="creditsOpen = false"
+      >
+        <section
+          class="max-w-xl rounded-3xl border border-white/20 bg-white p-8 text-center text-ink shadow-2xl"
+          @click.stop
+        >
+          <Heart :size="42" class="mx-auto fill-gold text-gold" />
+          <h3 class="mt-5 text-2xl font-black tracking-tight text-gold drop-shadow-sm">
+            DiploPresent <span class="text-gold-dark">v{{ appVersion }}</span>
+          </h3>
+          <p class="mt-4 text-lg leading-relaxed">
+            Deze app is gemaakt door Gerben Lodder, maar had niet kunnen bestaan zonder de input, tests en oneindig geduld van Eric Craane!
+          </p>
+        </section>
+      </div>
+    </Teleport>
   </main>
 </template>

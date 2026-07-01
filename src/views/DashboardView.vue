@@ -168,7 +168,7 @@ onBeforeUnmount(() => {
               <button class="button-secondary border-navy text-navy" @click="copyLiveUrl">
                 <Copy :size="18" /> Kopieer URL
               </button>
-              <button class="button-primary" @click="openLive">
+              <button class="button-secondary border-navy text-navy" @click="openLive">
                 <MonitorUp :size="18" /> Open beamerbeeld
               </button>
             </div>
@@ -239,15 +239,14 @@ onBeforeUnmount(() => {
             Toon titelpagina
           </button>
           <button
-            class="mt-3 w-full"
-            :class="session.testPattern ? 'button-primary' : 'button-secondary border-navy text-navy'"
+            class="button-secondary mt-3 w-full border-navy text-navy"
             :disabled="busy"
             @click="toggleTestPattern"
           >
             {{ session.testPattern ? 'Verberg testbeeld' : 'Toon testbeeld' }}
           </button>
           <button
-            class="button-secondary mt-4 w-full border-red-300 text-red-700 hover:bg-red-100"
+            class="button-secondary mt-4 w-full border-red-300 text-red-700"
             :disabled="busy"
             @click="killSession"
           >

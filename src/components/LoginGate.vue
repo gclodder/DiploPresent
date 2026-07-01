@@ -47,7 +47,7 @@ function submit() {
           {{ error }}
         </p>
 
-        <button class="button-primary w-full" type="submit" :disabled="busy || !configured || !password">
+        <button class="button-secondary w-full" type="submit" :disabled="busy || !configured || !password">
           {{ busy ? 'Inloggen…' : 'Inloggen' }}
         </button>
       </form>

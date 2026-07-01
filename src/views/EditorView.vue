@@ -8,11 +8,14 @@ import {
   FileSpreadsheet,
   GraduationCap,
   GripVertical,
+  Pencil,
   Plus,
   Search,
+  Sparkles,
   Shuffle,
   Trash2,
   UploadCloud,
+  X,
 } from 'lucide-vue-next'
 import AppHeader from '../components/AppHeader.vue'
 import PhotoPair from '../components/PhotoPair.vue'
@@ -26,6 +29,19 @@ const jsonFiles = ref([])
 const editorMode = ref('csv')
 const selectedFile = ref('')
 const selectedJsonFile = ref('')
+const mergeSelectedJsonFiles = ref([])
+const mergeStudents = ref([])
+const newlyAddedStudentKeys = ref(new Set())
+const addStudentModalOpen = ref(false)
+const newStudent = ref({
+  studentNumber: '',
+  fullName: '',
+  firstName: '',
+  lastName: '',
+  mentor: '',
+  group: '',
+  cumLaude: false,
+})
 const sourceStudents = ref([])
 const listType = ref('mentor')
 const selectedChoices = ref([])
@@ -61,8 +77,12 @@ const proposedName = computed(() =>
     ? selectedJsonFile.value
     : safeListName(selectedChoices.value),
 )
+const mergeProposedName = computed(() =>
+  safeListName(mergeSelectedJsonFiles.value.map((fileName) => displayFileName(fileName))),
+)
 const listTypeLabel = computed(() => (listType.value === 'mentor' ? 'mentor' : 'stamgroep'))
 const canSave = computed(() => listStudents.value.length > 0 && proposedName.value)
+const canSaveMerged = computed(() => mergeSelectedJsonFiles.value.length > 1 && mergeStudents.value.length > 0)
 const hasFirstNames = computed(() => listStudents.value.some((student) => student.firstName))
 
 function displayFileName(fileName) {
@@ -95,12 +115,15 @@ async function loadFiles() {
 function resetSelection() {
   selectedChoices.value = []
   listStudents.value = []
+  newlyAddedStudentKeys.value = new Set()
   search.value = ''
 }
 
 function resetEditor() {
   selectedFile.value = ''
   selectedJsonFile.value = ''
+  mergeSelectedJsonFiles.value = []
+  mergeStudents.value = []
   sourceStudents.value = []
   resetSelection()
 }
@@ -152,6 +175,7 @@ async function selectJsonFile(fileName) {
       ? list.content.selection
       : [fileName.replace(/\.json$/i, '')]
     search.value = ''
+    newlyAddedStudentKeys.value = new Set()
     ui.notify(`${listStudents.value.length} leerlingen geladen uit ${fileName}.`)
   } catch (error) {
     resetSelection()
@@ -159,6 +183,37 @@ async function selectJsonFile(fileName) {
   } finally {
     loading.value = false
   }
+}
+
+async function rebuildMergePreview() {
+  mergeStudents.value = []
+  if (!mergeSelectedJsonFiles.value.length) return
+  loading.value = true
+  try {
+    const merged = []
+    for (const fileName of mergeSelectedJsonFiles.value) {
+      const list = await api.getList(fileName)
+      merged.push(...normalizeJson(list.content))
+    }
+    mergeStudents.value = renumber(merged)
+  } catch (error) {
+    mergeStudents.value = []
+    ui.notify(error.message)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function toggleMergeJsonFile(fileName) {
+  editorMode.value = 'merge'
+  selectedFile.value = ''
+  selectedJsonFile.value = ''
+  sourceStudents.value = []
+  resetSelection()
+  mergeSelectedJsonFiles.value = mergeSelectedJsonFiles.value.includes(fileName)
+    ? mergeSelectedJsonFiles.value.filter((value) => value !== fileName)
+    : [...mergeSelectedJsonFiles.value, fileName]
+  await rebuildMergePreview()
 }
 
 async function uploadFile(event) {
@@ -211,6 +266,48 @@ async function deleteJson(fileName) {
   }
 }
 
+function normalizeJsonFileName(name) {
+  return safeListName([String(name).replace(/\.json$/i, '').trim()])
+}
+
+async function renameJson(fileName) {
+  const currentName = displayFileName(fileName)
+  const input = window.prompt('Nieuwe naam voor deze JSON-lijst:', currentName)
+  if (input == null) return
+  const newName = normalizeJsonFileName(input)
+  if (!newName || newName === fileName) return
+  if (
+    jsonFiles.value.some((file) => file.name === newName) &&
+    !window.confirm(`${newName} bestaat al. Wil je dit bestand overschrijven?`)
+  ) {
+    return
+  }
+
+  loading.value = true
+  try {
+    const list = await api.getList(fileName)
+    const students = normalizeJson(list.content)
+    await api.saveList(newName, students, {
+      listType: list.content.listType || 'mentor',
+      selection: Array.isArray(list.content.selection)
+        ? list.content.selection
+        : [displayFileName(newName)],
+    })
+    await api.deleteList(fileName)
+    if (selectedJsonFile.value === fileName) selectedJsonFile.value = newName
+    mergeSelectedJsonFiles.value = mergeSelectedJsonFiles.value.map((value) =>
+      value === fileName ? newName : value,
+    )
+    await loadFiles()
+    if (editorMode.value === 'merge') await rebuildMergePreview()
+    ui.notify(`${fileName} hernoemd naar ${newName}.`)
+  } catch (error) {
+    ui.notify(error.message)
+  } finally {
+    loading.value = false
+  }
+}
+
 function chooseGroup(value) {
   if (listType.value === 'mentor') {
     selectedChoices.value = selectedChoices.value.includes(value)
@@ -249,6 +346,56 @@ function toggleCumLaude(student) {
   student.cumLaude = !student.cumLaude
 }
 
+function studentKey(student) {
+  return student.studentNumber || `${student.fullName}-${student.position}`
+}
+
+function resetNewStudent() {
+  newStudent.value = {
+    studentNumber: '',
+    fullName: '',
+    firstName: '',
+    lastName: '',
+    mentor: '',
+    group: '',
+    cumLaude: false,
+  }
+}
+
+function openAddStudentModal() {
+  resetNewStudent()
+  addStudentModalOpen.value = true
+}
+
+function closeAddStudentModal() {
+  addStudentModalOpen.value = false
+  resetNewStudent()
+}
+
+function addStudentToJson() {
+  const studentNumber = newStudent.value.studentNumber.trim()
+  const fullName = newStudent.value.fullName.trim()
+  if (!studentNumber || !fullName) {
+    ui.notify('Leerlingnummer en volledige naam zijn verplicht.')
+    return
+  }
+  const student = {
+    position: listStudents.value.length + 1,
+    studentNumber,
+    fullName,
+    firstName: newStudent.value.firstName.trim(),
+    lastName: newStudent.value.lastName.trim(),
+    mentor: newStudent.value.mentor.trim(),
+    group: newStudent.value.group.trim(),
+    cumLaude: Boolean(newStudent.value.cumLaude),
+  }
+  listStudents.value = renumber([...listStudents.value, student])
+  newlyAddedStudentKeys.value = new Set([...newlyAddedStudentKeys.value, studentKey(student)])
+  search.value = ''
+  closeAddStudentModal()
+  ui.notify(`${student.fullName} onderaan toegevoegd.`)
+}
+
 async function saveList() {
   if (!canSave.value) return
   saving.value = true
@@ -260,6 +407,24 @@ async function saveList() {
     await loadFiles()
     if (editorMode.value === 'json') selectedJsonFile.value = proposedName.value
     ui.notify(`${proposedName.value} opgeslagen in de getoonde volgorde.`)
+  } catch (error) {
+    ui.notify(error.message)
+  } finally {
+    saving.value = false
+  }
+}
+
+async function saveMergedJson() {
+  if (!canSaveMerged.value) return
+  saving.value = true
+  try {
+    await api.saveList(mergeProposedName.value, mergeStudents.value, {
+      listType: 'combined-json',
+      selection: mergeSelectedJsonFiles.value.map((fileName) => displayFileName(fileName)),
+    })
+    await loadFiles()
+    selectedJsonFile.value = mergeProposedName.value
+    ui.notify(`${mergeProposedName.value} opgeslagen met ${mergeStudents.value.length} leerlingen.`)
   } catch (error) {
     ui.notify(error.message)
   } finally {
@@ -299,9 +464,9 @@ function downloadList() {
         <div class="mb-5">
           <h1 class="text-lg font-bold">1. Kies je bron</h1>
           <p class="muted mt-1">
-            Maak een nieuwe lijst vanuit een CSV, of open een bestaande JSON-presentatielijst om de volgorde/cum laude te bewerken.
+            Maak een nieuwe lijst vanuit een CSV, open een bestaande JSON-presentatielijst, of voeg meerdere JSONs samen.
           </p>
-          <div class="mt-4 grid max-w-xl grid-cols-2 gap-2">
+          <div class="mt-4 grid max-w-3xl grid-cols-1 gap-2 sm:grid-cols-3">
             <button
               class="rounded-lg border p-3 text-center font-semibold"
               :class="editorMode === 'csv' ? 'border-gold-dark bg-gold text-ink' : 'border-slate-300'"
@@ -318,6 +483,14 @@ function downloadList() {
             >
               Bestaande JSON bewerken
             </button>
+            <button
+              class="rounded-lg border p-3 text-center font-semibold"
+              :class="editorMode === 'merge' ? 'border-gold-dark bg-gold text-ink' : 'border-slate-300'"
+              type="button"
+              @click="switchMode('merge')"
+            >
+              JSON samenvoegen
+            </button>
           </div>
         </div>
 
@@ -333,7 +506,7 @@ function downloadList() {
           <article
             v-for="file in csvFiles"
             :key="file.name"
-            class="rounded-2xl border bg-white p-4 text-left text-ink shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-wait"
+            class="relative rounded-2xl border bg-white p-4 pb-12 text-left text-ink shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-wait"
             :class="
               selectedFile === file.name
                 ? 'border-navy ring-4 ring-navy/20'
@@ -346,11 +519,8 @@ function downloadList() {
                 <FileSpreadsheet :size="28" />
               </span>
               <span class="flex items-center gap-1">
-                <span class="rounded-full bg-navy px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white">
-                  .csv
-                </span>
                 <button
-                  class="rounded-full p-1.5 text-red-700 hover:bg-red-100"
+                  class="file-card-icon-button file-card-icon-button-danger"
                   type="button"
                   :disabled="loading"
                   :aria-label="`${file.name} verwijderen`"
@@ -360,6 +530,9 @@ function downloadList() {
                 </button>
               </span>
             </div>
+            <span class="absolute bottom-3 right-3 rounded-full bg-navy px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white">
+              .csv
+            </span>
             <p class="break-words font-bold leading-tight">{{ displayFileName(file.name) }}</p>
             <div class="mt-3 flex flex-wrap items-center gap-2">
               <p
@@ -387,11 +560,11 @@ function downloadList() {
           </button>
         </div>
 
-        <div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div v-else-if="editorMode === 'json'" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           <article
             v-for="file in jsonFiles"
             :key="file.name"
-            class="rounded-2xl border bg-white p-4 text-left text-ink shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+            class="relative rounded-2xl border bg-white p-4 pb-12 text-left text-ink shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
             :class="
               selectedJsonFile === file.name
                 ? 'border-navy ring-4 ring-navy/20'
@@ -404,11 +577,18 @@ function downloadList() {
                 <FileJson :size="28" />
               </span>
               <span class="flex items-center gap-1">
-                <span class="rounded-full bg-navy px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white">
-                  .json
-                </span>
                 <button
-                  class="rounded-full p-1.5 text-red-700 hover:bg-red-100"
+                  class="file-card-icon-button file-card-icon-button-rename"
+                  type="button"
+                  :disabled="loading"
+                  :aria-label="`${file.name} hernoemen`"
+                  @click.stop="renameJson(file.name)"
+                >
+                  <span class="file-card-icon-label">Hernoemen</span>
+                  <Pencil :size="16" />
+                </button>
+                <button
+                  class="file-card-icon-button file-card-icon-button-danger"
                   type="button"
                   :disabled="loading"
                   :aria-label="`${file.name} verwijderen`"
@@ -418,6 +598,9 @@ function downloadList() {
                 </button>
               </span>
             </div>
+            <span class="absolute bottom-3 right-3 rounded-full bg-navy px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white">
+              .json
+            </span>
             <p class="break-words font-bold leading-tight">{{ displayFileName(file.name) }}</p>
             <p class="muted mt-2">
               {{
@@ -449,6 +632,100 @@ function downloadList() {
               <span class="mt-1 block text-sm text-slate-500">Start vanuit CSV</span>
             </span>
           </button>
+        </div>
+
+        <div v-else class="space-y-5">
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <article
+              v-for="file in jsonFiles"
+              :key="file.name"
+              class="relative rounded-2xl border bg-white p-4 pb-12 text-left text-ink shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+              :class="
+                mergeSelectedJsonFiles.includes(file.name)
+                  ? 'border-navy ring-4 ring-navy/20'
+                  : 'border-slate-200 hover:border-navy/40'
+              "
+              @click="toggleMergeJsonFile(file.name)"
+            >
+              <span
+                v-if="mergeSelectedJsonFiles.includes(file.name)"
+                class="absolute -right-2 -top-2 grid h-8 w-8 place-items-center rounded-full bg-navy text-sm font-black text-white shadow"
+              >
+                {{ mergeSelectedJsonFiles.indexOf(file.name) + 1 }}
+              </span>
+              <div class="mb-3 flex items-start justify-between gap-3">
+                <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/50 text-navy">
+                  <FileJson :size="28" />
+                </span>
+                <span class="flex items-center gap-1">
+                  <button
+                    class="file-card-icon-button file-card-icon-button-rename"
+                    type="button"
+                    :disabled="loading"
+                    :aria-label="`${file.name} hernoemen`"
+                    @click.stop="renameJson(file.name)"
+                  >
+                    <span class="file-card-icon-label">Hernoemen</span>
+                    <Pencil :size="16" />
+                  </button>
+                  <button
+                    class="file-card-icon-button file-card-icon-button-danger"
+                    type="button"
+                    :disabled="loading"
+                    :aria-label="`${file.name} verwijderen`"
+                    @click.stop="deleteJson(file.name)"
+                  >
+                    <Trash2 :size="16" />
+                  </button>
+                </span>
+              </div>
+              <span class="absolute bottom-3 right-3 rounded-full bg-navy px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white">
+                .json
+              </span>
+              <p class="break-words font-bold leading-tight">{{ displayFileName(file.name) }}</p>
+              <p class="muted mt-2">
+                {{
+                  Number.isFinite(file.studentCount)
+                    ? `${file.studentCount} leerlingen`
+                    : 'Aantal leerlingen onbekend'
+                }}
+              </p>
+            </article>
+          </div>
+
+          <div v-if="mergeSelectedJsonFiles.length" class="rounded-2xl border border-white/60 bg-white/70 p-4 text-ink shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 class="text-lg font-bold">Samenvoegvolgorde</h2>
+                <p class="muted mt-1">
+                  {{ mergeStudents.length }} leerlingen · wordt opgeslagen als {{ mergeProposedName }}
+                </p>
+              </div>
+              <button
+                class="button-primary"
+                :disabled="saving || !canSaveMerged"
+                @click="saveMergedJson"
+              >
+                <UploadCloud :size="18" />
+                {{ saving ? 'Opslaan…' : `${mergeProposedName} opslaan` }}
+              </button>
+            </div>
+            <ol class="mt-4 grid gap-2 md:grid-cols-2">
+              <li
+                v-for="(fileName, index) in mergeSelectedJsonFiles"
+                :key="fileName"
+                class="flex items-center gap-3 rounded-xl bg-white px-3 py-2 shadow-sm"
+              >
+                <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-navy text-sm font-black text-white">
+                  {{ index + 1 }}
+                </span>
+                <span class="font-semibold">{{ displayFileName(fileName) }}</span>
+              </li>
+            </ol>
+            <p v-if="mergeSelectedJsonFiles.length < 2" class="mt-3 text-sm text-amber-700">
+              Kies minimaal twee JSON-bestanden om samen te voegen.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -514,10 +791,7 @@ function downloadList() {
               {{ listStudents.length }} leerlingen · wordt opgeslagen als {{ proposedName }}
             </p>
           </div>
-          <label class="relative min-w-64 flex-1 lg:max-w-sm">
-            <Search class="absolute left-3 top-2.5 text-slate-500" :size="20" />
-            <input v-model="search" class="field pl-10" placeholder="Zoek binnen deze lijst…" />
-          </label>
+
         </div>
 
         <div class="flex flex-wrap gap-3">
@@ -525,9 +799,21 @@ function downloadList() {
             <ArrowDownAZ :size="18" /> Sorteer op achternaam
           </button>
           <button class="button-secondary" @click="shuffle"><Shuffle :size="18" /> Schudden</button>
+          <button
+            v-if="editorMode === 'json'"
+            class="button-secondary"
+            type="button"
+            @click="openAddStudentModal"
+          >
+            <Plus :size="18" /> Leerling toevoegen
+          </button>
           <button class="button-secondary" @click="downloadList">
             <Download :size="18" /> Download
           </button>
+                    <label class="relative min-w-64 flex-1 lg:max-w-sm">
+            <Search class="absolute left-3 top-2.5 text-slate-500" :size="20" />
+            <input v-model="search" class="field pl-10" placeholder="Zoek binnen deze lijst…" />
+          </label>
           <button class="button-primary" :disabled="saving || !canSave" @click="saveList">
             <UploadCloud :size="18" /> {{ saving ? 'Opslaan…' : `${proposedName} opslaan` }}
           </button>
@@ -560,6 +846,7 @@ function downloadList() {
                 v-for="student in listStudents"
                 :key="student.studentNumber"
                 class="border-t border-slate-200 hover:bg-gold/10"
+                :class="newlyAddedStudentKeys.has(studentKey(student)) ? 'bg-gold/20' : ''"
               >
                 <td class="p-3">
                   <span class="drag-handle inline-flex cursor-grab items-center gap-1 font-semibold">
@@ -570,7 +857,18 @@ function downloadList() {
                   <PhotoPair :student-number="student.studentNumber" :photo-base-url="config.photoBaseUrl" />
                 </td>
                 <td class="p-3">{{ student.studentNumber }}</td>
-                <td class="p-3 font-medium">{{ student.firstName || student.fullName }}</td>
+                <td class="p-3 font-medium">
+                  <span class="inline-flex items-center gap-2">
+                    {{ student.firstName || student.fullName }}
+                    <span
+                      v-if="newlyAddedStudentKeys.has(studentKey(student))"
+                      class="inline-flex items-center gap-1 rounded-full bg-gold px-2 py-1 text-[0.65rem] font-black uppercase tracking-wide text-ink"
+                    >
+                      <Sparkles :size="13" />
+                      Nieuw
+                    </span>
+                  </span>
+                </td>
                 <td v-if="hasFirstNames" class="p-3">{{ student.lastName }}</td>
                 <td class="p-3">
                   <button
@@ -603,13 +901,25 @@ function downloadList() {
                 v-for="student in visibleStudents"
                 :key="student.studentNumber"
                 class="border-t border-slate-200"
+                :class="newlyAddedStudentKeys.has(studentKey(student)) ? 'bg-gold/20' : ''"
               >
                 <td class="p-3">{{ student.position }}</td>
                 <td class="p-3">
                   <PhotoPair :student-number="student.studentNumber" :photo-base-url="config.photoBaseUrl" />
                 </td>
                 <td class="p-3">{{ student.studentNumber }}</td>
-                <td class="p-3 font-medium">{{ student.firstName || student.fullName }}</td>
+                <td class="p-3 font-medium">
+                  <span class="inline-flex items-center gap-2">
+                    {{ student.firstName || student.fullName }}
+                    <span
+                      v-if="newlyAddedStudentKeys.has(studentKey(student))"
+                      class="inline-flex items-center gap-1 rounded-full bg-gold px-2 py-1 text-[0.65rem] font-black uppercase tracking-wide text-ink"
+                    >
+                      <Sparkles :size="13" />
+                      Nieuw
+                    </span>
+                  </span>
+                </td>
                 <td v-if="hasFirstNames" class="p-3">{{ student.lastName }}</td>
                 <td class="p-3">
                   <button
@@ -641,5 +951,75 @@ function downloadList() {
         </div>
       </section>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="addStudentModalOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+        @click.self="closeAddStudentModal"
+      >
+        <section
+          class="w-full max-w-2xl rounded-3xl bg-white p-6 text-ink shadow-2xl"
+          @click.stop
+        >
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-sm font-bold uppercase tracking-wide text-navy">JSON bewerken</p>
+              <h2 class="mt-1 text-2xl font-bold">Leerling toevoegen</h2>
+              <p class="muted mt-1">De leerling wordt onderaan de huidige lijst toegevoegd.</p>
+            </div>
+            <button
+              type="button"
+              class="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              aria-label="Leerling toevoegen sluiten"
+              @click="closeAddStudentModal"
+            >
+              <X :size="24" />
+            </button>
+          </div>
+
+          <div class="mt-5 grid gap-4 md:grid-cols-2">
+            <label class="block">
+              <span class="mb-1 block font-semibold">Leerlingnummer *</span>
+              <input v-model.trim="newStudent.studentNumber" class="field" />
+            </label>
+            <label class="block">
+              <span class="mb-1 block font-semibold">Volledige naam *</span>
+              <input v-model.trim="newStudent.fullName" class="field" />
+            </label>
+            <label class="block">
+              <span class="mb-1 block font-semibold">Voornaam</span>
+              <input v-model.trim="newStudent.firstName" class="field" />
+            </label>
+            <label class="block">
+              <span class="mb-1 block font-semibold">Achternaam</span>
+              <input v-model.trim="newStudent.lastName" class="field" />
+            </label>
+            <label class="block">
+              <span class="mb-1 block font-semibold">Mentor</span>
+              <input v-model.trim="newStudent.mentor" class="field" />
+            </label>
+            <label class="block">
+              <span class="mb-1 block font-semibold">Stamgroep</span>
+              <input v-model.trim="newStudent.group" class="field" />
+            </label>
+            <label class="inline-flex items-center gap-3 rounded-xl border border-slate-200 p-3 font-semibold md:col-span-2">
+              <input v-model="newStudent.cumLaude" type="checkbox" class="h-5 w-5 accent-navy" />
+              Cum laude
+            </label>
+          </div>
+
+          <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button type="button" class="button-secondary border-slate-300 text-slate-700" @click="closeAddStudentModal">
+              Annuleren
+            </button>
+            <button type="button" class="button-secondary border-navy text-navy" @click="addStudentToJson">
+              <Plus :size="18" />
+              Toevoegen
+            </button>
+          </div>
+        </section>
+      </div>
+    </Teleport>
   </main>
 </template>

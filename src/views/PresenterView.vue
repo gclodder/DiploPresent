@@ -114,8 +114,12 @@ function persistSettings() {
 function startPresentation() {
   if (!presentation.students.length) return
   persistSettings()
+  const params = new URLSearchParams({
+    department: presentation.department,
+    title: presentation.title || config.value.defaultTitle || '',
+  })
   const url = new URL(
-    `${import.meta.env.BASE_URL}#/live/${encodeURIComponent(presentation.listName)}`,
+    `${import.meta.env.BASE_URL}#/live/${encodeURIComponent(presentation.listName)}?${params}`,
     window.location.href,
   )
   window.open(url, '_blank', 'noopener')
@@ -172,7 +176,7 @@ async function startSharedPresentation() {
           </div>
           <button
             type="button"
-            class="button-primary shrink-0"
+            class="button-secondary shrink-0 border-navy text-navy"
             @click="returnToDashboard(liveSession.id)"
           >
             Terug naar live dashboard <MonitorUp :size="18" />
@@ -282,11 +286,11 @@ async function startSharedPresentation() {
           Kies lokaal voor één laptop, of gedeeld voor een apart dashboard en beamerbeeld.
         </p>
         <div class="mt-5 grid gap-3">
-          <button class="button-primary" :disabled="!presentation.students.length" @click="startPresentation">
+          <button class="button-secondary border-navy text-navy" :disabled="!presentation.students.length" @click="startPresentation">
             Eén laptop <ExternalLink :size="18" />
           </button>
           <button
-            class="button-secondary border-navy text-navy hover:bg-navy hover:text-white"
+            class="button-secondary border-navy text-navy"
             :disabled="!presentation.students.length"
             @click="startSharedPresentation"
           >

@@ -32,7 +32,7 @@ const nextStudent = computed(() => presentation.students[index.value + 1] ?? nul
 const counter = computed(() => `${index.value < 0 ? '-' : index.value + 1}/${presentation.students.length}`)
 const groupPhoto = computed(
   () =>
-    `${import.meta.env.BASE_URL}${presentation.photoBaseUrl}/examenfoto_${presentation.department}_1920.jpg`,
+    `${import.meta.env.BASE_URL}${presentation.photoBaseUrl}/examenfoto_${presentation.department}.jpg`,
 )
 const isShared = computed(() => Boolean(route.query.session))
 const oldPhoto = computed(() =>
@@ -295,9 +295,15 @@ onMounted(async () => {
   } else if ((!presentation.students.length || presentation.listName !== listName) && listName) {
     try {
       const [list, config] = await Promise.all([api.getList(listName), api.getConfig()])
+      const queryDepartment = String(route.query.department || '').toLowerCase()
+      const queryTitle = String(route.query.title || '').trim()
       presentation.listName = listName
       presentation.students = normalizeJson(list.content)
       presentation.photoBaseUrl = config.photoBaseUrl
+      presentation.department = ['havo', 'vwo'].includes(queryDepartment)
+        ? queryDepartment
+        : presentation.department
+      presentation.title = queryTitle || presentation.title || config.defaultTitle || ''
       presentation.persist()
     } catch {
       // Het startscherm toont hieronder dat er geen leerlingen beschikbaar zijn.
@@ -336,7 +342,7 @@ onBeforeUnmount(() => {
         v-if="presentation.students.length"
         :src="groupPhoto"
         alt="Groepsfoto"
-        class="max-h-[72vh] w-full rounded-3xl object-contain shadow-2xl"
+        class="max-h-[72vh] w-full rounded-3xl object-cover shadow-2xl"
         @error="($event.target.src = fallback)"
       />
       <div v-else class="panel mx-auto max-w-xl">
@@ -472,7 +478,7 @@ onBeforeUnmount(() => {
     </section>
 
     <button
-      class="button-primary fixed bottom-5 right-5 z-30 rounded-full p-3 transition-opacity duration-300"
+      class="button-secondary fixed bottom-5 right-5 z-30 rounded-full p-3 transition-opacity duration-300"
       :class="controlsVisible ? 'opacity-100' : 'pointer-events-none opacity-0'"
       :aria-label="fullscreen ? 'Volledig scherm verlaten' : 'Volledig scherm openen'"
       tabindex="0"
