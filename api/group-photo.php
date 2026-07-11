@@ -37,6 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     ]);
 }
 
+require_admin();
+
 $department = department();
 $path = group_photo_path($department);
 

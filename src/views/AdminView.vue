@@ -1,13 +1,14 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Cropper } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
-import { Image, Save, Trash2, UploadCloud, X } from 'lucide-vue-next'
+import { Image, KeyRound, Save, Trash2, UploadCloud, X } from 'lucide-vue-next'
 import AppHeader from '../components/AppHeader.vue'
 import { api } from '../api/client'
 import { useUiStore } from '../stores/ui'
 
 const ui = useUiStore()
+const auth = inject('auth', null)
 const config = ref({
   importBaseUrl: 'storage/imports',
   listBaseUrl: 'storage/lists',
@@ -17,6 +18,8 @@ const config = ref({
 const photos = ref([])
 const busy = ref(false)
 const uploadInputs = ref({})
+const customUserPassword = ref('')
+const generatedUserPassword = ref('')
 const cropper = ref(null)
 const cropModal = ref({
   department: '',
@@ -36,6 +39,7 @@ function groupPhotoUrl(department) {
 }
 
 async function load() {
+  if (!auth?.isAdmin.value) return
   try {
     ;[config.value, photos.value] = await Promise.all([
       api.getConfig(),
@@ -43,6 +47,21 @@ async function load() {
     ])
   } catch (error) {
     ui.notify(error.message)
+  }
+}
+
+async function rotateUserPassword(password = '') {
+  busy.value = true
+  generatedUserPassword.value = ''
+  try {
+    const result = await api.rotateUserPassword(password)
+    generatedUserPassword.value = result.generatedPassword
+    customUserPassword.value = ''
+    ui.notify('Gebruikerswachtwoord geroteerd.')
+  } catch (error) {
+    ui.notify(error.message)
+  } finally {
+    busy.value = false
   }
 }
 
@@ -152,93 +171,142 @@ onBeforeUnmount(closeCropModal)
 <template>
   <main class="page-shell">
     <AppHeader compact />
-    <div class="content-width space-y-6">
-      <section class="panel">
-        <p class="text-sm font-bold uppercase tracking-wide text-navy">Beheer</p>
-        <h1 class="mt-1 text-2xl font-bold">Algemene instellingen</h1>
-        <label class="mt-5 block max-w-2xl">
-          <span class="mb-1 block font-semibold">Default titel op de titelpagina</span>
-          <input v-model.trim="config.defaultTitle" class="field" placeholder="Diplomauitreiking 2026" />
-        </label>
-        <button class="button-primary mt-4" :disabled="busy" @click="saveConfig">
-          <Save :size="18" />
-          Instellingen opslaan
-        </button>
+    <div v-if="!auth?.isAdmin.value" class="content-width">
+      <section class="panel max-w-2xl">
+        <p class="text-sm font-bold uppercase tracking-wide text-red-700">Geen toegang</p>
+        <h1 class="mt-1 text-2xl font-bold">Beheer is alleen voor admins</h1>
+        <p class="muted mt-2">Log uit en log opnieuw in als admin om deze pagina te gebruiken.</p>
       </section>
+    </div>
+
+    <div v-else class="content-width space-y-6">
+      <div class="grid gap-6 lg:grid-cols-2">
+        <section class="panel">
+          <p class="text-sm font-bold uppercase tracking-wide text-navy">Login</p>
+          <h1 class="mt-1 text-2xl font-bold">Gebruikerswachtwoord roteren</h1>
+          <p class="muted mt-2">
+            Gebruik dit na afloop van een diplomeringsdag. Het oude gedeelde gebruikerswachtwoord werkt daarna niet meer voor nieuwe logins.
+            Bestaande sessies blijven ingelogd tot ze uitloggen of de browser sluiten.
+          </p>
+          <label class="mt-5 block">
+            <span class="mb-1 block font-semibold">Zelfgekozen gebruikerswachtwoord</span>
+            <input
+              v-model.trim="customUserPassword"
+              class="field"
+              type="text"
+              autocomplete="off"
+              placeholder="Bijvoorbeeld diploma-avond-2026"
+              :disabled="busy"
+            />
+          </label>
+          <div class="mt-4 flex flex-wrap gap-3">
+            <button
+              class="button-primary"
+              :disabled="busy || customUserPassword.length < 8"
+              @click="rotateUserPassword(customUserPassword)"
+            >
+              <Save :size="18" />
+              {{ busy ? 'Opslaan…' : 'Wachtwoord opslaan' }}
+            </button>
+            <button class="button-secondary" :disabled="busy" @click="rotateUserPassword()">
+              <KeyRound :size="18" />
+              Automatisch maken
+            </button>
+          </div>
+          <label v-if="generatedUserPassword" class="mt-5 block">
+            <span class="mb-1 block font-semibold">Opgeslagen gebruikerswachtwoord</span>
+            <input class="field font-mono" type="text" :value="generatedUserPassword" readonly />
+          </label>
+        </section>
+
+        <section class="panel">
+          <p class="text-sm font-bold uppercase tracking-wide text-navy">Beheer</p>
+          <h1 class="mt-1 text-2xl font-bold">Algemene instellingen</h1>
+          <label class="mt-5 block">
+            <span class="mb-1 block font-semibold">Default titel op de titelpagina</span>
+            <input v-model.trim="config.defaultTitle" class="field" placeholder="Diplomauitreiking 2026" />
+          </label>
+          <button class="button-primary mt-4" :disabled="busy" @click="saveConfig">
+            <Save :size="18" />
+            Instellingen opslaan
+          </button>
+        </section>
+      </div>
 
       <section class="panel">
-        <div class="mb-5">
-          <p class="text-sm font-bold uppercase tracking-wide text-navy">Leerlingfoto’s</p>
-          <h2 class="mt-1 text-xl font-bold">Instructie voor leerlingfoto's</h2>
-          <p class="muted mt-1">Plaats de leerlingfoto's in format <code>123456_1.jpg</code> en <code>123456_2.jpg</code> in de map <code>storage/photos/</code>. 
-            Als DiploPresent een foto niet vindt, wordt er teruggevallen op een default placeholder.</p>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="mb-5">
-          <p class="text-sm font-bold uppercase tracking-wide text-navy">Groepsfoto’s</p>
-          <h2 class="mt-1 text-xl font-bold">Beheer titelpaginafoto per afdeling</h2>
+        <div class="max-w-3xl">
+          <p class="text-sm font-bold uppercase tracking-wide text-navy">Foto's</p>
+          <h2 class="mt-1 text-xl font-bold">Leerlingfoto's</h2>
           <p class="muted mt-1">
-            Upload JPG-bestanden. Ze worden opgeslagen als
-            <code>examenfoto_havo.jpg</code> en <code>examenfoto_vwo.jpg</code> in de map <code>storage/photos/</code>.
+            Plaats leerlingfoto's in format <code>123456_1.jpg</code> en <code>123456_2.jpg</code> in de map
+            <code>storage/photos/</code>. Als DiploPresent een foto niet vindt, wordt er teruggevallen op een default placeholder.
           </p>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-2">
-          <article
-            v-for="department in ['havo', 'vwo']"
-            :key="department"
-            class="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-          >
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <h3 class="text-lg font-bold uppercase">{{ department }}</h3>
-                <p class="muted">
-                  {{
-                    photoByDepartment[department]?.exists
-                      ? `${photoByDepartment[department].name}`
-                      : 'Nog geen groepsfoto'
-                  }}
-                </p>
+        <div class="mt-8 border-t border-slate-200 pt-6">
+          <div class="mb-5 max-w-3xl">
+            <h2 class="text-xl font-bold">Groepsfoto's</h2>
+            <p class="muted mt-1">
+              Upload JPG-bestanden. Ze worden opgeslagen als
+              <code>examenfoto_havo.jpg</code> en <code>examenfoto_vwo.jpg</code> in de map <code>storage/photos/</code>.
+            </p>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2">
+            <article
+              v-for="department in ['havo', 'vwo']"
+              :key="department"
+              class="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <h3 class="text-lg font-bold uppercase">{{ department }}</h3>
+                  <p class="muted">
+                    {{
+                      photoByDepartment[department]?.exists
+                        ? `${photoByDepartment[department].name}`
+                        : 'Nog geen groepsfoto'
+                    }}
+                  </p>
+                </div>
+                <Image class="text-navy" :size="34" />
               </div>
-              <Image class="text-navy" :size="34" />
-            </div>
 
-            <img
-              :src="groupPhotoUrl(department)"
-              :alt="`Groepsfoto ${department}`"
-              class="mt-4 aspect-video w-full rounded-xl bg-slate-200 object-cover"
-              @error="($event.target.src = fallback)"
-            />
+              <img
+                :src="groupPhotoUrl(department)"
+                :alt="`Groepsfoto ${department}`"
+                class="mt-4 aspect-video w-full rounded-xl bg-slate-200 object-cover"
+                @error="($event.target.src = fallback)"
+              />
 
-            <input
-              :ref="(element) => { if (element) uploadInputs[department] = element }"
-              class="hidden"
-              type="file"
-              accept=".jpg,.jpeg,image/jpeg"
-              @change="openCropModal(department, $event)"
-            />
+              <input
+                :ref="(element) => { if (element) uploadInputs[department] = element }"
+                class="hidden"
+                type="file"
+                accept=".jpg,.jpeg,image/jpeg"
+                @change="openCropModal(department, $event)"
+              />
 
-            <div class="mt-4 grid gap-2 sm:grid-cols-2">
-              <button
-                class="button-secondary border-navy text-navy"
-                :disabled="busy"
-                @click="uploadInputs[department]?.click()"
-              >
-                <UploadCloud :size="18" />
-                Uploaden
-              </button>
-              <button
-                class="button-secondary border-red-300 text-red-700"
-                :disabled="busy || !photoByDepartment[department]?.exists"
-                @click="deletePhoto(department)"
-              >
-                <Trash2 :size="18" />
-                Verwijderen
-              </button>
-            </div>
-          </article>
+              <div class="mt-4 grid gap-2 sm:grid-cols-2">
+                <button
+                  class="button-secondary border-navy text-navy"
+                  :disabled="busy"
+                  @click="uploadInputs[department]?.click()"
+                >
+                  <UploadCloud :size="18" />
+                  Uploaden
+                </button>
+                <button
+                  class="button-secondary border-red-300 text-red-700"
+                  :disabled="busy || !photoByDepartment[department]?.exists"
+                  @click="deletePhoto(department)"
+                >
+                  <Trash2 :size="18" />
+                  Verwijderen
+                </button>
+              </div>
+            </article>
+          </div>
         </div>
       </section>
     </div>

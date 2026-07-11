@@ -27,8 +27,10 @@ async function request(endpoint, options = {}) {
 
 export const api = {
   getAuth: () => request('auth.php'),
-  login: (password) =>
-    request('auth.php', { method: 'POST', body: JSON.stringify({ password }) }),
+  login: (role, password) =>
+    request('auth.php', { method: 'POST', body: JSON.stringify({ role, password }) }),
+  rotateUserPassword: (password = '') =>
+    request('auth.php', { method: 'PUT', body: JSON.stringify({ password }) }),
   logout: () => request('auth.php', { method: 'DELETE' }),
   getConfig: () => request('config.php'),
   updateConfig: (config) =>

@@ -61,8 +61,9 @@ function previous() {
 }
 
 function next() {
+  const currentIndex = session.value?.index ?? -1
   update({
-    index: Math.min(students.value.length - 1, (session.value?.index ?? -1) + 1),
+    index: currentIndex >= students.value.length - 1 ? -1 : currentIndex + 1,
     peek: false,
     testPattern: false,
   })

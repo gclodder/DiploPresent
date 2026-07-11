@@ -7,9 +7,9 @@ const dist = join(root, 'dist')
 
 const storageHtaccess = `Options -Indexes
 
-<Files "config.json">
+<FilesMatch "^(config|auth)\\.json$">
     Require all denied
-</Files>
+</FilesMatch>
 
 <FilesMatch "^\\.">
     Require all denied

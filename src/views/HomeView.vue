@@ -1,18 +1,22 @@
 <script setup>
-import { ref } from 'vue'
+import { inject, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Heart, Presentation, Settings, UsersRound } from 'lucide-vue-next'
 import AppHeader from '../components/AppHeader.vue'
 import { version as appVersion } from '../../package.json'
 
 const creditsOpen = ref(false)
+const auth = inject('auth', null)
 </script>
 
 <template>
   <main class="page-shell grid min-h-screen place-items-center">
     <div class="content-width">
       <AppHeader />
-      <section class="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
+      <section
+        class="mx-auto grid gap-6"
+        :class="auth?.isAdmin.value ? 'max-w-5xl md:grid-cols-3' : 'max-w-4xl md:grid-cols-2'"
+      >
         <RouterLink
           to="/editor"
           class="home-card home-card-left panel"
@@ -30,6 +34,7 @@ const creditsOpen = ref(false)
           <p class="mt-2 text-slate-600">Kies een opgeslagen lijst en start de diplomapresentatie.</p>
         </RouterLink>
         <RouterLink
+          v-if="auth?.isAdmin.value"
           to="/beheer"
           class="home-card home-card-left panel"
         >

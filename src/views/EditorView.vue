@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, inject, onMounted, ref } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import {
   ArrowDownAZ,
@@ -25,6 +25,7 @@ import { normalizeJson, parseCsv, photoUrl, renumber, safeListName, selectStuden
 import { useUiStore } from '../stores/ui'
 
 const ui = useUiStore()
+const auth = inject('auth', null)
 const csvFiles = ref([])
 const jsonFiles = ref([])
 const editorMode = ref('csv')
@@ -86,6 +87,7 @@ const mergeProposedName = computed(() =>
 const listTypeLabel = computed(() => (listType.value === 'mentor' ? 'mentor' : 'stamgroep'))
 const canSave = computed(() => listStudents.value.length > 0 && proposedName.value)
 const canSaveMerged = computed(() => mergeSelectedJsonFiles.value.length > 1 && mergeStudents.value.length > 0)
+const canManageFiles = computed(() => auth?.isAdmin.value === true)
 const hasFirstNames = computed(() => listStudents.value.some((student) => student.firstName))
 const printListTitle = computed(() => displayFileName(selectedJsonFile.value || proposedName.value))
 const printMentors = computed(() =>
@@ -93,6 +95,12 @@ const printMentors = computed(() =>
     a.localeCompare(b, 'nl', { numeric: true }),
   ),
 )
+const printDensityClass = computed(() => {
+  const count = listStudents.value.length
+  if (count <= 12) return 'print-list-roomy'
+  if (count <= 16) return 'print-list-balanced'
+  return 'print-list-compact'
+})
 
 function displayFileName(fileName) {
   return fileName.replace(/\.[^.]+$/u, '')
@@ -233,6 +241,11 @@ async function toggleMergeJsonFile(fileName) {
 }
 
 async function uploadFile(event) {
+  if (!canManageFiles.value) {
+    ui.notify('Alleen beheerders mogen CSV-bestanden uploaden.')
+    event.target.value = ''
+    return
+  }
   const file = event.target.files?.[0]
   if (!file) return
   loading.value = true
@@ -253,6 +266,10 @@ async function uploadFile(event) {
 }
 
 async function deleteCsv(fileName) {
+  if (!canManageFiles.value) {
+    ui.notify('Alleen beheerders mogen CSV-bestanden verwijderen.')
+    return
+  }
   if (!window.confirm(`${fileName} verwijderen?`)) return
   loading.value = true
   try {
@@ -268,6 +285,10 @@ async function deleteCsv(fileName) {
 }
 
 async function deleteJson(fileName) {
+  if (!canManageFiles.value) {
+    ui.notify('Alleen beheerders mogen JSON-lijsten verwijderen.')
+    return
+  }
   if (!window.confirm(`${fileName} verwijderen?`)) return
   loading.value = true
   try {
@@ -287,6 +308,10 @@ function normalizeJsonFileName(name) {
 }
 
 async function renameJson(fileName) {
+  if (!canManageFiles.value) {
+    ui.notify('Alleen beheerders mogen JSON-lijsten hernoemen.')
+    return
+  }
   const currentName = displayFileName(fileName)
   const input = window.prompt('Nieuwe naam voor deze JSON-lijst:', currentName)
   if (input == null) return
@@ -427,6 +452,10 @@ function addStudentToJson() {
 }
 
 async function saveList() {
+  if (!canManageFiles.value) {
+    ui.notify('Alleen beheerders mogen JSON-lijsten opslaan.')
+    return
+  }
   if (!canSave.value) return
   saving.value = true
   try {
@@ -445,6 +474,10 @@ async function saveList() {
 }
 
 async function saveMergedJson() {
+  if (!canManageFiles.value) {
+    ui.notify('Alleen beheerders mogen JSON-lijsten opslaan.')
+    return
+  }
   if (!canSaveMerged.value) return
   saving.value = true
   try {
@@ -550,6 +583,7 @@ function downloadList() {
               </span>
               <span class="flex items-center gap-1">
                 <button
+                  v-if="canManageFiles"
                   class="file-card-icon-button file-card-icon-button-danger"
                   type="button"
                   :disabled="loading"
@@ -575,6 +609,7 @@ function downloadList() {
           </article>
 
           <button
+            v-if="canManageFiles"
             type="button"
             class="grid min-h-40 place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/70 p-4 text-center text-ink transition hover:-translate-y-0.5 hover:border-navy hover:bg-white hover:shadow-lg disabled:cursor-wait"
             :disabled="loading"
@@ -608,6 +643,7 @@ function downloadList() {
               </span>
               <span class="flex items-center gap-1">
                 <button
+                  v-if="canManageFiles"
                   class="file-card-icon-button file-card-icon-button-rename"
                   type="button"
                   :disabled="loading"
@@ -618,6 +654,7 @@ function downloadList() {
                   <Pencil :size="16" />
                 </button>
                 <button
+                  v-if="canManageFiles"
                   class="file-card-icon-button file-card-icon-button-danger"
                   type="button"
                   :disabled="loading"
@@ -650,6 +687,7 @@ function downloadList() {
           </article>
 
           <button
+            v-if="canManageFiles"
             type="button"
             class="grid min-h-40 place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/70 p-4 text-center text-ink transition hover:-translate-y-0.5 hover:border-navy hover:bg-white hover:shadow-lg"
             @click="switchMode('csv')"
@@ -689,6 +727,7 @@ function downloadList() {
                 </span>
                 <span class="flex items-center gap-1">
                   <button
+                    v-if="canManageFiles"
                     class="file-card-icon-button file-card-icon-button-rename"
                     type="button"
                     :disabled="loading"
@@ -699,6 +738,7 @@ function downloadList() {
                     <Pencil :size="16" />
                   </button>
                   <button
+                    v-if="canManageFiles"
                     class="file-card-icon-button file-card-icon-button-danger"
                     type="button"
                     :disabled="loading"
@@ -732,6 +772,7 @@ function downloadList() {
                 </p>
               </div>
               <button
+                v-if="canManageFiles"
                 class="button-primary"
                 :disabled="saving || !canSaveMerged"
                 @click="saveMergedJson"
@@ -824,38 +865,44 @@ function downloadList() {
 
         </div>
 
-        <div class="flex flex-wrap gap-3">
-          <button class="button-secondary" @click="sortByLastName">
-            <ArrowDownAZ :size="18" /> Sorteer op achternaam
-          </button>
-          <button class="button-secondary" @click="shuffle"><Shuffle :size="18" /> Schudden</button>
-          <button
-            v-if="editorMode === 'json'"
-            class="button-secondary"
-            type="button"
-            @click="openAddStudentModal"
-          >
-            <Plus :size="18" /> Leerling toevoegen
-          </button>
-          <button class="button-secondary" @click="downloadList">
-            <Download :size="18" /> Download
-          </button>
-          <button
-            v-if="editorMode === 'json' && selectedJsonFile"
-            class="button-secondary"
-            type="button"
-            :disabled="!listStudents.length"
-            @click="printJsonList"
-          >
-            <Printer :size="18" /> Printlijst
-          </button>
-                    <label class="relative w-full sm:w-56 lg:w-64">
-            <Search class="absolute left-3 top-2.5 text-slate-500" :size="20" />
-            <input v-model="search" class="field pl-10" placeholder="Zoek binnen deze lijst…" />
-          </label>
-          <button class="button-primary" :disabled="saving || !canSave" @click="saveList">
-            <UploadCloud :size="18" /> {{ saving ? 'Opslaan…' : `${proposedName} opslaan` }}
-          </button>
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="button-group" role="group" aria-label="Lijstacties">
+            <button class="button-group-button" type="button" @click="sortByLastName">
+              <ArrowDownAZ :size="18" /> Sorteer
+            </button>
+            <button class="button-group-button" type="button" @click="shuffle">
+              <Shuffle :size="18" /> Schudden
+            </button>
+            <button
+              v-if="editorMode === 'json' && canManageFiles"
+              class="button-group-button"
+              type="button"
+              @click="openAddStudentModal"
+            >
+              <Plus :size="18" /> Toevoegen
+            </button>
+            <button class="button-group-button" type="button" @click="downloadList">
+              <Download :size="18" /> Download
+            </button>
+            <button
+              v-if="editorMode === 'json' && selectedJsonFile"
+              class="button-group-button"
+              type="button"
+              :disabled="!listStudents.length"
+              @click="printJsonList"
+            >
+              <Printer :size="18" /> Print
+            </button>
+          </div>
+          <div class="ml-auto flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
+            <label class="relative w-full sm:w-56 lg:w-64">
+              <Search class="absolute left-3 top-2.5 text-slate-500" :size="15" />
+              <input v-model="search" class="field pl-10" placeholder="Zoek binnen deze lijst…" />
+            </label>
+            <button v-if="canManageFiles" class="button-primary" :disabled="saving || !canSave" @click="saveList">
+              <UploadCloud :size="18" /> {{ saving ? 'Opslaan…' : `${proposedName} opslaan` }}
+            </button>
+          </div>
         </div>
 
         <p v-if="search" class="text-sm text-gold">
@@ -1064,6 +1111,7 @@ function downloadList() {
     <section
       v-if="editorMode === 'json' && selectedJsonFile && listStudents.length"
       class="print-only print-list"
+      :class="printDensityClass"
     >
       <header class="print-list-header">
         <div>
@@ -1085,7 +1133,9 @@ function downloadList() {
       <table class="print-student-table">
         <thead>
           <tr>
+            <th>Volgorde</th>
             <th>Foto</th>
+            <th>Leerlingnr.</th>
             <th>Naam leerling</th>
             <th>Mentor</th>
             <th>Cum laude</th>
@@ -1093,6 +1143,7 @@ function downloadList() {
         </thead>
         <tbody>
           <tr v-for="student in listStudents" :key="studentKey(student)">
+            <td>{{ student.position }}</td>
             <td>
               <img
                 :src="newestPhotoUrl(student)"
@@ -1101,9 +1152,9 @@ function downloadList() {
                 @error="usePrintPhotoFallback"
               />
             </td>
+            <td>{{ student.studentNumber }}</td>
             <td>
-              <strong>{{ student.firstName || student.fullName }}</strong>
-              <span v-if="student.firstName && student.lastName">{{ student.lastName }}</span>
+              <strong>{{ student.fullName }}</strong>
             </td>
             <td>{{ student.mentor || '-' }}</td>
             <td>{{ student.cumLaude ? 'Ja' : 'Nee' }}</td>

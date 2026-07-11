@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
 require_method('POST');
+require_admin();
 
 if (!isset($_FILES['file']) || !is_array($_FILES['file'])) {
     fail('Geen bestand ontvangen.');

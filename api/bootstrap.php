@@ -7,6 +7,7 @@ const IMPORT_ROOT = STORAGE_ROOT . '/imports';
 const LIST_ROOT = STORAGE_ROOT . '/lists';
 const SESSION_ROOT = STORAGE_ROOT . '/sessions';
 const CONFIG_FILE = STORAGE_ROOT . '/config.json';
+const AUTH_FILE = STORAGE_ROOT . '/auth.json';
 const ENV_FILE = APP_ROOT . '/.env';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -94,10 +95,33 @@ function is_authenticated(): bool
     return ($_SESSION['authenticated'] ?? false) === true;
 }
 
+function current_user_role(): string
+{
+    if (!is_authenticated()) {
+        return '';
+    }
+
+    $role = (string) ($_SESSION['role'] ?? 'user');
+    return in_array($role, ['admin', 'user'], true) ? $role : 'user';
+}
+
+function is_admin(): bool
+{
+    return current_user_role() === 'admin';
+}
+
 function require_auth(): void
 {
     if (!is_authenticated()) {
         fail('Niet ingelogd.', 401);
+    }
+}
+
+function require_admin(): void
+{
+    require_auth();
+    if (!is_admin()) {
+        fail('Alleen beheerders mogen deze actie uitvoeren.', 403);
     }
 }
 
@@ -167,9 +191,9 @@ function ensure_storage(): void
         STORAGE_ROOT . '/.htaccess' => <<<'HTACCESS'
 Options -Indexes
 
-<Files "config.json">
+<FilesMatch "^(config|auth)\.json$">
     Require all denied
-</Files>
+</FilesMatch>
 
 <FilesMatch "^\.">
     Require all denied

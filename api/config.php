@@ -15,6 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     respond(is_file(CONFIG_FILE) ? array_merge($defaults, read_json_file(CONFIG_FILE)) : $defaults);
 }
 
+require_admin();
+
 $body = json_body();
 $config = [];
 foreach (array_keys($defaults) as $key) {

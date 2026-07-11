@@ -8,6 +8,7 @@ defineProps({
 
 const logo = `${import.meta.env.BASE_URL}images/DP-logo.png`
 const logout = inject('logout', null)
+const auth = inject('auth', null)
 </script>
 
 <template>
@@ -23,7 +24,7 @@ const logout = inject('logout', null)
     <nav v-if="compact" class="flex gap-3">
       <RouterLink class="button-secondary" to="/editor">Editor</RouterLink>
       <RouterLink class="button-secondary" to="/presenter">Presenter</RouterLink>
-      <RouterLink class="button-secondary" to="/beheer">Beheer</RouterLink>
+      <RouterLink v-if="auth?.isAdmin.value" class="button-secondary" to="/beheer">Beheer</RouterLink>
       <button v-if="logout" class="button-secondary" type="button" @click="logout">Uitloggen</button>
     </nav>
   </header>

@@ -17,6 +17,8 @@ const fullscreen = ref(false)
 const controlsVisible = ref(true)
 const testPatternVisible = ref(false)
 const cardMotion = ref(createCardMotion())
+const flyByItems = ref([])
+const flyByRun = ref(0)
 const timers = new Set()
 const preloadedImages = new Set()
 let transitionRunId = 0
@@ -106,6 +108,44 @@ function newPhotoUrl(student) {
   return photoUrl(presentation.photoBaseUrl, student.studentNumber, 2)
 }
 
+function createFlyByItem(student, studentIndex, runId) {
+  const delay = studentIndex * 260
+  const duration = Math.round(randomBetween(4400, 5600))
+  const size = Math.round(randomBetween(150, 230))
+  const top = randomBetween(9, 68)
+  const startRotation = randomRotation(4, 13)
+  const endRotation = randomRotation(4, 15)
+  const drift = randomBetween(-7, 7)
+
+  return {
+    key: `${runId}-${student.studentNumber || studentIndex}`,
+    src: newPhotoUrl(student),
+    alt: student.fullName,
+    style: {
+      '--fly-delay': `${delay}ms`,
+      '--fly-duration': `${duration}ms`,
+      '--fly-size': `${size}px`,
+      '--fly-top': `${top}vh`,
+      '--fly-drift': `${drift}vh`,
+      '--fly-start-rotate': `${startRotation}deg`,
+      '--fly-end-rotate': `${endRotation}deg`,
+      zIndex: 10 + (studentIndex % 8),
+    },
+  }
+}
+
+function startPhotoFlyBy() {
+  if (phase.value !== 'start' || !presentation.students.length || flyByItems.value.length) return
+  const runId = ++flyByRun.value
+  flyByItems.value = presentation.students.map((student, studentIndex) =>
+    createFlyByItem(student, studentIndex, runId),
+  )
+  const lastDelay = (presentation.students.length - 1) * 260
+  later(() => {
+    if (flyByRun.value === runId) flyByItems.value = []
+  }, lastDelay + 5900)
+}
+
 function preloadImage(src) {
   if (!src || preloadedImages.has(src)) return Promise.resolve()
   return new Promise((resolve) => {
@@ -169,6 +209,7 @@ function fireConfetti() {
 
 async function showStudent(nextIndex) {
   const runId = ++transitionRunId
+  flyByItems.value = []
   if (!isShared.value) testPatternVisible.value = false
   if (nextIndex < 0) {
     clearTimers()
@@ -184,7 +225,10 @@ async function showStudent(nextIndex) {
     }, 700)
     return
   }
-  if (nextIndex >= presentation.students.length) return
+  if (nextIndex >= presentation.students.length) {
+    showStudent(-1)
+    return
+  }
 
   clearTimers()
   const targetStudent = presentation.students[nextIndex]
@@ -229,6 +273,8 @@ function toggleTestPattern() {
 }
 
 function onKeydown(event) {
+  if (event.key.toLowerCase() === 'f' && !event.repeat) startPhotoFlyBy()
+  if (isShared.value) return
   if (event.key === 'ArrowRight') showStudent(index.value + 1)
   if (event.key === 'ArrowLeft') showStudent(index.value - 1)
   if (event.key === '0') showStudent(-1)
@@ -310,10 +356,8 @@ onMounted(async () => {
     }
   }
   document.title = presentation.title || 'DiploPresent'
-  if (!isShared.value) {
-    window.addEventListener('keydown', onKeydown)
-    window.addEventListener('keyup', onKeyup)
-  }
+  window.addEventListener('keydown', onKeydown)
+  if (!isShared.value) window.addEventListener('keyup', onKeyup)
   window.addEventListener('mousemove', revealControls)
   window.addEventListener('touchstart', revealControls)
   document.addEventListener('fullscreenchange', onFullscreenChange)
@@ -334,7 +378,11 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(90deg,#030c20_0%,#204568_50%,#030c20_100%)] p-8">
-    <section v-if="phase === 'start'" class="relative flex w-full max-w-6xl flex-col items-center gap-6 text-center">
+    <section
+      v-if="phase === 'start'"
+      class="relative flex w-full max-w-6xl flex-col items-center gap-6 text-center transition-opacity duration-500"
+      :class="flyByItems.length ? 'opacity-0' : 'opacity-100'"
+    >
       <h1 v-if="presentation.title" class="text-4xl font-bold text-white drop-shadow-lg md:text-5xl">
         {{ presentation.title }}
       </h1>
@@ -350,6 +398,18 @@ onBeforeUnmount(() => {
         <p class="mt-2 text-slate-600">Open deze presentatie opnieuw vanuit de Presenter.</p>
       </div>
     </section>
+
+    <div v-if="flyByItems.length" class="pointer-events-none fixed inset-0 z-10 overflow-hidden">
+      <img
+        v-for="item in flyByItems"
+        :key="item.key"
+        :src="item.src"
+        :alt="item.alt"
+        :style="item.style"
+        class="photo-fly-by absolute rounded-xl border-[0.6rem] border-white bg-white object-cover shadow-2xl"
+        @error="($event.target.src = fallback)"
+      />
+    </div>
 
     <section v-else-if="current" class="grid w-full max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-8">
       <article
@@ -397,8 +457,16 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <img :src="schoolLogo" alt="Spieringshoek" class="fixed bottom-5 left-1/2 w-80 -translate-x-1/2 opacity-80" />
-    <div class="group fixed bottom-0 left-0 z-30 p-4">
+    <img
+      :src="schoolLogo"
+      alt="Spieringshoek"
+      class="fixed bottom-5 left-1/2 w-80 -translate-x-1/2 transition-opacity duration-500"
+      :class="flyByItems.length ? 'opacity-0' : 'opacity-80'"
+    />
+    <div
+      class="group fixed bottom-0 left-0 z-30 p-4 transition-opacity duration-500"
+      :class="flyByItems.length ? 'pointer-events-none opacity-0' : 'opacity-100'"
+    >
       <div
         class="live-jump-list pointer-events-none absolute bottom-[calc(100%-1rem)] left-4 mb-3 max-h-[55vh] w-80 overflow-y-auto rounded-2xl border border-white/15 bg-slate-950/65 p-2 opacity-0 shadow-2xl backdrop-blur-md transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100"
       >

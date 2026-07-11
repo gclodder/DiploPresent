@@ -11,6 +11,7 @@ if (!is_file($path)) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    require_admin();
     if (!unlink($path)) {
         fail('Importbestand kon niet worden verwijderd.', 500);
     }

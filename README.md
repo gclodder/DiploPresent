@@ -27,7 +27,11 @@ Open daarna `http://<ip-adres-van-deze-computer>:5173/`. De PHP API blijft lokaa
 
 ## Login configureren
 
-DiploPresent gebruikt een eigen loginpagina met PHP-sessiecookie. Het wachtwoord staat niet in de Vue-build.
+DiploPresent gebruikt een eigen loginpagina met PHP-sessiecookie. Wachtwoorden staan niet in de Vue-build.
+Er zijn twee rollen:
+
+- `admin`: vast beheerwachtwoord uit `.env`
+- `user`: gedeeld gebruikerswachtwoord dat admin na gebruik handmatig kan roteren
 
 Maak lokaal of op de server een `.env` bestand op basis van `.env.example`:
 
@@ -35,7 +39,7 @@ Maak lokaal of op de server een `.env` bestand op basis van `.env.example`:
 Copy-Item .env.example .env
 ```
 
-Genereer een wachtwoordhash:
+Genereer een hash voor het adminwachtwoord:
 
 ```powershell
 php -r "echo password_hash('jouw-wachtwoord', PASSWORD_DEFAULT), PHP_EOL;"
@@ -44,9 +48,17 @@ php -r "echo password_hash('jouw-wachtwoord', PASSWORD_DEFAULT), PHP_EOL;"
 Zet de output in `.env`:
 
 ```env
-DIPLOPRESENT_PASSWORD_HASH="$2y$..."
+DIPLOPRESENT_ADMIN_PASSWORD_HASH="$2y$..."
 DIPLOPRESENT_SESSION_NAME="diplopresent_auth"
 ```
+
+Optioneel kun je ook een eerste gebruikerswachtwoord in `.env` zetten:
+
+```env
+DIPLOPRESENT_USER_PASSWORD_HASH="$2y$..."
+```
+
+Log daarna in als admin en gebruik `Beheer > Gebruikerswachtwoord roteren` om het gedeelde gebruikerswachtwoord te maken of te vervangen. Je kunt zelf een wachtwoord invullen of er automatisch een laten maken. De hash wordt opgeslagen in `storage/auth.json`; het opgeslagen wachtwoord wordt eenmalig op het scherm getoond.
 
 Commit `.env` niet. Alleen `.env.example` hoort in Git.
 

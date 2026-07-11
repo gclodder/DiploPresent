@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    require_admin();
     $name = safe_filename((string) ($_GET['name'] ?? ''), ['json']);
     $path = LIST_ROOT . '/' . $name;
     if (!is_file($path)) {
@@ -20,6 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     }
     respond(['name' => $name]);
 }
+
+require_admin();
 
 $body = json_body();
 $name = safe_filename((string) ($body['name'] ?? ''), ['json']);
