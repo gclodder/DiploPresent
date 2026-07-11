@@ -253,3 +253,149 @@
   opacity: 1;
   transform: translateX(0);
 }
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    min-height: auto;
+    color: #111827;
+    background: white !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-only,
+  .print-only * {
+    visibility: visible;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-list {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+    color: #111827;
+    font-family: var(--font-sans);
+  }
+
+  .print-list-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12mm;
+    margin-bottom: 4mm;
+    padding-bottom: 2.5mm;
+    border-bottom: 1px solid #cbd5e1;
+  }
+
+  .print-list-kicker {
+    margin: 0 0 1mm;
+    color: #475569;
+    font-size: 7.5pt;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .print-list h1 {
+    margin: 0;
+    color: #030c20;
+    font-size: 16pt;
+    line-height: 1.1;
+  }
+
+  .print-list dl {
+    display: grid;
+    min-width: 62mm;
+    gap: 1.4mm;
+    margin: 0;
+    font-size: 8.5pt;
+  }
+
+  .print-list dt {
+    margin: 0;
+    color: #64748b;
+    font-size: 7pt;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .print-list dd {
+    margin: 0.3mm 0 0;
+    font-weight: 700;
+  }
+
+  .print-student-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 8pt;
+    line-height: 1.12;
+  }
+
+  .print-student-table th:nth-child(1),
+  .print-student-table td:nth-child(1) {
+    width: 13mm;
+  }
+
+  .print-student-table th:nth-child(3),
+  .print-student-table td:nth-child(3) {
+    width: 24mm;
+  }
+
+  .print-student-table th:nth-child(4),
+  .print-student-table td:nth-child(4) {
+    width: 22mm;
+  }
+
+  .print-student-table th {
+    padding: 1.4mm 2mm;
+    border-bottom: 1px solid #94a3b8;
+    color: #334155;
+    font-size: 7pt;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .print-student-table td {
+    padding: 0.7mm 2mm;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
+  }
+
+  .print-student-table tr {
+    break-inside: avoid;
+  }
+
+  .print-student-table strong,
+  .print-student-table span {
+    display: block;
+  }
+
+  .print-student-table span {
+    margin-top: 0.2mm;
+    color: #475569;
+    font-size: 7pt;
+  }
+
+  .print-student-photo {
+    width: 8mm;
+    height: 8mm;
+    border-radius: 999px;
+    object-fit: cover;
+  }
+}

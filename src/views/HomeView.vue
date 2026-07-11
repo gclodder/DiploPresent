@@ -3,9 +3,9 @@ import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Heart, Presentation, Settings, UsersRound } from 'lucide-vue-next'
 import AppHeader from '../components/AppHeader.vue'
+import { version as appVersion } from '../../package.json'
 
 const creditsOpen = ref(false)
-const appVersion = __APP_VERSION__
 </script>
 
 <template>

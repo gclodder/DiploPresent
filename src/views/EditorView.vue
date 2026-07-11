@@ -10,6 +10,7 @@ import {
   GripVertical,
   Pencil,
   Plus,
+  Printer,
   Search,
   Sparkles,
   Shuffle,
@@ -20,7 +21,7 @@ import {
 import AppHeader from '../components/AppHeader.vue'
 import PhotoPair from '../components/PhotoPair.vue'
 import { api } from '../api/client'
-import { normalizeJson, parseCsv, renumber, safeListName, selectStudents } from '../domain/students'
+import { normalizeJson, parseCsv, photoUrl, renumber, safeListName, selectStudents } from '../domain/students'
 import { useUiStore } from '../stores/ui'
 
 const ui = useUiStore()
@@ -51,6 +52,8 @@ const loading = ref(false)
 const saving = ref(false)
 const uploadInput = ref(null)
 const config = ref({ photoBaseUrl: 'storage/photos' })
+const printedAt = ref('')
+const fallbackPhoto = `${import.meta.env.BASE_URL}images/no-photo.jpg`
 
 const mentors = computed(() =>
   [...new Set(sourceStudents.value.map((student) => student.mentor).filter(Boolean))].sort((a, b) =>
@@ -84,9 +87,22 @@ const listTypeLabel = computed(() => (listType.value === 'mentor' ? 'mentor' : '
 const canSave = computed(() => listStudents.value.length > 0 && proposedName.value)
 const canSaveMerged = computed(() => mergeSelectedJsonFiles.value.length > 1 && mergeStudents.value.length > 0)
 const hasFirstNames = computed(() => listStudents.value.some((student) => student.firstName))
+const printListTitle = computed(() => displayFileName(selectedJsonFile.value || proposedName.value))
+const printMentors = computed(() =>
+  [...new Set(listStudents.value.map((student) => student.mentor).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, 'nl', { numeric: true }),
+  ),
+)
 
 function displayFileName(fileName) {
   return fileName.replace(/\.[^.]+$/u, '')
+}
+
+function formatPrintDateTime(date) {
+  return new Intl.DateTimeFormat('nl-NL', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+  }).format(date)
 }
 
 onMounted(async () => {
@@ -344,6 +360,20 @@ function removeStudent(student) {
 
 function toggleCumLaude(student) {
   student.cumLaude = !student.cumLaude
+}
+
+function newestPhotoUrl(student) {
+  return photoUrl(config.value.photoBaseUrl, student.studentNumber, 2)
+}
+
+function usePrintPhotoFallback(event) {
+  event.target.src = fallbackPhoto
+}
+
+function printJsonList() {
+  if (editorMode.value !== 'json' || !selectedJsonFile.value || !listStudents.value.length) return
+  printedAt.value = formatPrintDateTime(new Date())
+  window.setTimeout(() => window.print(), 0)
 }
 
 function studentKey(student) {
@@ -810,7 +840,16 @@ function downloadList() {
           <button class="button-secondary" @click="downloadList">
             <Download :size="18" /> Download
           </button>
-                    <label class="relative min-w-64 flex-1 lg:max-w-sm">
+          <button
+            v-if="editorMode === 'json' && selectedJsonFile"
+            class="button-secondary"
+            type="button"
+            :disabled="!listStudents.length"
+            @click="printJsonList"
+          >
+            <Printer :size="18" /> Printlijst
+          </button>
+                    <label class="relative w-full sm:w-56 lg:w-64">
             <Search class="absolute left-3 top-2.5 text-slate-500" :size="20" />
             <input v-model="search" class="field pl-10" placeholder="Zoek binnen deze lijst…" />
           </label>
@@ -1021,5 +1060,56 @@ function downloadList() {
         </section>
       </div>
     </Teleport>
+
+    <section
+      v-if="editorMode === 'json' && selectedJsonFile && listStudents.length"
+      class="print-only print-list"
+    >
+      <header class="print-list-header">
+        <div>
+          <p class="print-list-kicker">JSON-lijst</p>
+          <h1>{{ printListTitle }}</h1>
+        </div>
+        <dl>
+          <div>
+            <dt>Mentoren</dt>
+            <dd>{{ printMentors.length ? printMentors.join(', ') : 'Geen mentor bekend' }}</dd>
+          </div>
+          <div>
+            <dt>Afgedrukt</dt>
+            <dd>{{ printedAt || formatPrintDateTime(new Date()) }}</dd>
+          </div>
+        </dl>
+      </header>
+
+      <table class="print-student-table">
+        <thead>
+          <tr>
+            <th>Foto</th>
+            <th>Naam leerling</th>
+            <th>Mentor</th>
+            <th>Cum laude</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="student in listStudents" :key="studentKey(student)">
+            <td>
+              <img
+                :src="newestPhotoUrl(student)"
+                alt=""
+                class="print-student-photo"
+                @error="usePrintPhotoFallback"
+              />
+            </td>
+            <td>
+              <strong>{{ student.firstName || student.fullName }}</strong>
+              <span v-if="student.firstName && student.lastName">{{ student.lastName }}</span>
+            </td>
+            <td>{{ student.mentor || '-' }}</td>
+            <td>{{ student.cumLaude ? 'Ja' : 'Nee' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
   </main>
 </template>
